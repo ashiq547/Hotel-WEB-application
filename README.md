@@ -77,7 +77,7 @@ The application features **13 dedicated pages** categorized into Public Customer
 ### 1. Clone the Repository
 ```bash
 git clone https://github.com/ashiq547/Hotel-WEB-application
-cd Hotel-Management-Database-System
+cd Hotel-WEB-application
 ```
 
 ### 2. Install Project Dependencies
