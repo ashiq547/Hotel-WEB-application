@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { ChartLineUpIcon, DownloadSimpleIcon, FileTextIcon, UsersIcon, CurrencyDollarIcon, CalendarCheckIcon } from '@phosphor-icons/react';
+import { ChartLineUp, DownloadSimple, FileText, Users, CurrencyDollar, CalendarCheck } from '@phosphor-icons/react';
 import { jsPDF } from 'jspdf';
-import { formatReportCell } from '../utils/reportCell';
 
 export const ReportsPage: React.FC = () => {
   const { user } = useAuth();
@@ -36,9 +35,7 @@ export const ReportsPage: React.FC = () => {
   const handleExportCSV = () => {
     if (reportData.length === 0) return;
     const headers = Object.keys(reportData[0]).join(',');
-    const rows = reportData.map(obj =>
-      Object.entries(obj).map(([key, value]) => `"${formatReportCell(key, value)}"`).join(',')
-    );
+    const rows = reportData.map(obj => Object.values(obj).map(v => `"${v}"`).join(','));
     const csvContent = "data:text/csv;charset=utf-8," + [headers, ...rows].join("\n");
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
@@ -90,16 +87,16 @@ export const ReportsPage: React.FC = () => {
         <div className="flex items-center gap-2">
           <button
             onClick={handleExportCSV}
-            className="flex items-center gap-1.5 px-3 py-2 border border-acc-300 dark:border-acc-700 bg-white dark:bg-acc-900 text-xs font-mono rounded hover:bg-acc-100 transition-colors whitespace-nowrap shrink-0"
+            className="flex items-center gap-1.5 px-3 py-2 border border-acc-300 dark:border-acc-700 bg-white dark:bg-acc-900 text-xs font-mono rounded hover:bg-acc-100 transition-colors"
           >
-            <DownloadSimpleIcon size={15} className="shrink-0" />
+            <DownloadSimple size={15} />
             <span>Export CSV</span>
           </button>
           <button
             onClick={handleExportPDF}
-            className="flex items-center gap-1.5 px-3 py-2 bg-acc-950 text-white dark:bg-brand-500 dark:text-acc-950 font-semibold text-xs font-mono rounded whitespace-nowrap shrink-0"
+            className="flex items-center gap-1.5 px-3 py-2 bg-acc-950 text-white dark:bg-brand-500 dark:text-acc-950 font-semibold text-xs font-mono rounded"
           >
-            <FileTextIcon size={15} className="shrink-0" />
+            <FileText size={15} />
             <span>Export PDF</span>
           </button>
         </div>
@@ -159,7 +156,7 @@ export const ReportsPage: React.FC = () => {
               <tr>
                 {reportData.length > 0 ? (
                   Object.keys(reportData[0]).map((key) => (
-                    <th key={key} className="p-3 font-semibold whitespace-nowrap">{key.replace(/_/g, ' ')}</th>
+                    <th key={key} className="p-3 font-semibold">{key.replace(/_/g, ' ')}</th>
                   ))
                 ) : (
                   <th className="p-3 font-semibold">Report Results</th>
@@ -178,9 +175,9 @@ export const ReportsPage: React.FC = () => {
               ) : (
                 reportData.map((row, idx) => (
                   <tr key={idx} className="hover:bg-acc-50 dark:hover:bg-acc-850/50">
-                    {Object.entries(row).map(([key, val], valIdx) => (
-                      <td key={valIdx} className="p-3 whitespace-nowrap">
-                        {formatReportCell(key, val)}
+                    {Object.values(row).map((val: any, valIdx) => (
+                      <td key={valIdx} className="p-3">
+                        {typeof val === 'number' && valIdx > 2 ? `BDT ৳${val.toLocaleString()}` : String(val ?? 'N/A')}
                       </td>
                     ))}
                   </tr>

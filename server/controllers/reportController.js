@@ -72,7 +72,16 @@ exports.getHighestSpendingGuests = async (req, res, next) => {
       LIMIT 10
     `);
 
-    res.json(rows);
+    const formatted = rows.map(r => {
+      const parts = (r.Full_Name || '').split(' ');
+      return {
+        ...r,
+        First_Name: parts[0] || '',
+        Last_Name: parts.slice(1).join(' ') || ''
+      };
+    });
+
+    res.json(formatted);
   } catch (err) {
     next(err);
   }
@@ -91,7 +100,16 @@ exports.getUpcomingCheckins = async (req, res, next) => {
       ORDER BY r.Check_In_Date ASC
     `);
 
-    res.json(rows);
+    const formatted = rows.map(r => {
+      const parts = (r.Full_Name || '').split(' ');
+      return {
+        ...r,
+        First_Name: parts[0] || '',
+        Last_Name: parts.slice(1).join(' ') || ''
+      };
+    });
+
+    res.json(formatted);
   } catch (err) {
     next(err);
   }

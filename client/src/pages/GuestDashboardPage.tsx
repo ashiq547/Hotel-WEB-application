@@ -5,23 +5,22 @@ import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { Reservation, Service } from '../types';
 import { GuestBookingModal } from '../components/GuestBookingModal';
-import { formatShortDate } from '../utils/date';
 import { 
-  UserIcon, 
-  CalendarCheckIcon, 
-  BedIcon, 
-  PlusIcon, 
-  ReceiptIcon, 
-  BellRingingIcon, 
-  ClockIcon, 
-  SparkleIcon, 
-  CheckCircleIcon, 
-  XCircleIcon, 
-  PencilSimpleIcon, 
-  CircleNotchIcon,
-  ArrowRightIcon,
-  ShieldCheckIcon,
-  HouseIcon
+  User, 
+  CalendarCheck, 
+  Bed, 
+  Plus, 
+  Receipt, 
+  BellRinging, 
+  Clock, 
+  Sparkle, 
+  CheckCircle, 
+  XCircle, 
+  PencilSimple, 
+  CircleNotch,
+  ArrowRight,
+  ShieldCheck,
+  House
 } from '@phosphor-icons/react';
 
 export const GuestDashboardPage: React.FC = () => {
@@ -185,7 +184,7 @@ export const GuestDashboardPage: React.FC = () => {
       <div className="py-12 max-w-md mx-auto page-fade-enter text-center">
         <div className="panel-card p-8 space-y-5 border border-acc-200 dark:border-acc-800 shadow-md">
           <div className="w-14 h-14 rounded-full bg-brand-500/20 text-brand-600 dark:text-brand-400 flex items-center justify-center mx-auto">
-            <UserIcon size={30} />
+            <User size={30} />
           </div>
           <div className="space-y-2">
             <h2 className="text-lg font-extrabold text-acc-950 dark:text-acc-50">Guest Sign-In Required</h2>
@@ -244,7 +243,7 @@ export const GuestDashboardPage: React.FC = () => {
             }}
             className="px-5 py-3 bg-brand-500 hover:bg-brand-400 text-acc-950 font-extrabold text-xs rounded-xl shadow-lg flex items-center gap-2 transition-all transform hover:-translate-y-0.5"
           >
-            <PlusIcon size={18} weight="bold" />
+            <Plus size={18} weight="bold" />
             <span>Book New Hotel Stay</span>
           </button>
           
@@ -252,7 +251,7 @@ export const GuestDashboardPage: React.FC = () => {
             to="/hotels"
             className="px-4 py-3 bg-white/10 hover:bg-white/20 text-white font-bold text-xs rounded-xl border border-white/20 flex items-center gap-2 transition-all"
           >
-            <HouseIcon size={16} />
+            <House size={16} />
             <span>Browse Hotels</span>
           </Link>
         </div>
@@ -260,7 +259,7 @@ export const GuestDashboardPage: React.FC = () => {
 
       {feedbackMsg && (
         <div className="p-4 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 rounded-xl text-emerald-800 dark:text-emerald-300 text-xs font-mono flex items-center gap-2 shadow-sm">
-          <CheckCircleIcon size={20} className="text-emerald-500 shrink-0" />
+          <CheckCircle size={20} className="text-emerald-500 shrink-0" />
           <span>{feedbackMsg}</span>
         </div>
       )}
@@ -271,7 +270,7 @@ export const GuestDashboardPage: React.FC = () => {
         <div className="panel-card p-4 space-y-2 border border-acc-200 dark:border-acc-800 hover:border-brand-500 transition-all">
           <div className="flex justify-between items-center text-acc-500 text-xs font-mono">
             <span>Active Stays</span>
-            <CalendarCheckIcon size={18} className="text-brand-500" />
+            <CalendarCheck size={18} className="text-brand-500" />
           </div>
           <div className="text-2xl font-extrabold text-acc-950 dark:text-acc-50 font-mono">
             {activeReservations.length}
@@ -284,7 +283,7 @@ export const GuestDashboardPage: React.FC = () => {
         <div className="panel-card p-4 space-y-2 border border-acc-200 dark:border-acc-800 hover:border-brand-500 transition-all">
           <div className="flex justify-between items-center text-acc-500 text-xs font-mono">
             <span>Completed Stays</span>
-            <CheckCircleIcon size={18} className="text-emerald-500" />
+            <CheckCircle size={18} className="text-emerald-500" />
           </div>
           <div className="text-2xl font-extrabold text-acc-950 dark:text-acc-50 font-mono">
             {summary.previousReservations || pastReservations.length || 0}
@@ -297,10 +296,10 @@ export const GuestDashboardPage: React.FC = () => {
         <div className="panel-card p-4 space-y-2 border border-acc-200 dark:border-acc-800 hover:border-brand-500 transition-all">
           <div className="flex justify-between items-center text-acc-500 text-xs font-mono">
             <span>Total Spent</span>
-            <ReceiptIcon size={18} className="text-brand-500" />
+            <Receipt size={18} className="text-brand-500" />
           </div>
           <div className="text-2xl font-extrabold text-acc-950 dark:text-acc-50 font-mono">
-            BDT ৳{Number(summary.totalAmountSpent || summary.totalSpent || 0).toLocaleString()}
+            BDT ৳{Number(summary.totalSpent || 0).toLocaleString()}
           </div>
           <div className="text-[10px] text-acc-400 font-mono">
             Cumulative Invoice Total
@@ -310,7 +309,7 @@ export const GuestDashboardPage: React.FC = () => {
         <div className="panel-card p-4 space-y-2 border border-acc-200 dark:border-acc-800 hover:border-brand-500 transition-all">
           <div className="flex justify-between items-center text-acc-500 text-xs font-mono">
             <span>Identification</span>
-            <ShieldCheckIcon size={18} className="text-emerald-500" />
+            <ShieldCheck size={18} className="text-emerald-500" />
           </div>
           <div className="text-xs font-extrabold text-acc-950 dark:text-acc-50 font-mono truncate">
             {guestProfile?.guest?.Identification_Number || 'Verified Guest'}
@@ -327,7 +326,7 @@ export const GuestDashboardPage: React.FC = () => {
         <div className="flex justify-between items-center">
           <div className="space-y-1">
             <h2 className="text-lg font-bold tracking-tight text-acc-950 dark:text-acc-50 flex items-center gap-2">
-              <CalendarCheckIcon size={20} className="text-brand-500" />
+              <CalendarCheck size={20} className="text-brand-500" />
               <span>Your Active Hotel Stays & Reservations</span>
             </h2>
             <p className="text-xs text-acc-500 font-sans">
@@ -342,20 +341,20 @@ export const GuestDashboardPage: React.FC = () => {
             }}
             className="px-3.5 py-2 bg-brand-500 text-acc-950 font-bold text-xs rounded-xl shadow flex items-center gap-1.5 font-mono"
           >
-            <PlusIcon size={16} />
+            <Plus size={16} />
             <span>New Booking</span>
           </button>
         </div>
 
         {loading ? (
           <div className="panel-card p-8 text-center text-acc-500 font-mono text-xs flex items-center justify-center gap-2">
-            <CircleNotchIcon size={18} className="animate-spin text-brand-500" />
+            <CircleNotch size={18} className="animate-spin text-brand-500" />
             <span>Loading your booking records...</span>
           </div>
         ) : activeReservations.length === 0 ? (
           <div className="panel-card p-8 text-center space-y-4 border border-dashed border-acc-300 dark:border-acc-700">
             <div className="w-12 h-12 rounded-full bg-acc-100 dark:bg-acc-800 flex items-center justify-center mx-auto text-acc-400">
-              <BedIcon size={24} />
+              <Bed size={24} />
             </div>
             <div className="space-y-1">
               <h3 className="text-sm font-bold text-acc-950 dark:text-acc-100">No Active Stays Right Now</h3>
@@ -370,15 +369,15 @@ export const GuestDashboardPage: React.FC = () => {
               }}
               className="px-4 py-2.5 bg-brand-500 text-acc-950 font-bold text-xs rounded-xl inline-flex items-center gap-2 shadow"
             >
-              <PlusIcon size={16} />
+              <Plus size={16} />
               <span>Reserve a Room Now</span>
             </button>
           </div>
         ) : (
           <div className="space-y-4">
             {activeReservations.map((r) => {
-              const checkIn = formatShortDate(r.Check_In_Date);
-              const checkOut = formatShortDate(r.Check_Out_Date);
+              const checkIn = new Date(r.Check_In_Date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+              const checkOut = new Date(r.Check_Out_Date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
               const nightly = Number(r.Nightly_Rate || 3500);
               const nights = r.Total_Nights || 2;
               const totalEst = nightly * nights;
@@ -409,7 +408,7 @@ export const GuestDashboardPage: React.FC = () => {
                         {r.Hotel_Name || 'Hotel.com Luxury Branch'}
                       </div>
                       <div className="flex items-center gap-1 text-acc-600 dark:text-acc-400">
-                        <BedIcon size={15} className="text-brand-500" />
+                        <Bed size={15} className="text-brand-500" />
                         <span>Room {r.Room_Number} ({r.Room_Type || 'Deluxe'})</span>
                       </div>
                       <div className="text-acc-500 text-[11px]">
@@ -451,7 +450,7 @@ export const GuestDashboardPage: React.FC = () => {
                         }}
                         className="px-3 py-1.5 bg-brand-500/10 hover:bg-brand-500/20 text-brand-700 dark:text-brand-300 border border-brand-300 dark:border-brand-800 rounded-xl font-mono text-xs flex items-center gap-1.5 transition-colors font-bold"
                       >
-                        <BellRingingIcon size={14} />
+                        <BellRinging size={14} />
                         <span>Order In-Stay Service</span>
                       </button>
 
@@ -459,7 +458,7 @@ export const GuestDashboardPage: React.FC = () => {
                         onClick={() => openEditModal(r)}
                         className="px-3.5 py-2 border border-acc-300 dark:border-acc-700 text-acc-950 dark:text-acc-100 hover:bg-acc-100 dark:hover:bg-acc-800 rounded-xl font-mono text-xs flex items-center gap-1.5 transition-colors"
                       >
-                        <PencilSimpleIcon size={14} />
+                        <PencilSimple size={14} />
                         <span>Change Dates</span>
                       </button>
 
@@ -468,7 +467,7 @@ export const GuestDashboardPage: React.FC = () => {
                         disabled={isCancelling === r.Reservation_ID}
                         className="px-3.5 py-2 bg-red-100 dark:bg-red-950/60 hover:bg-red-200 text-red-700 dark:text-red-300 border border-red-300 dark:border-red-800 rounded-xl font-mono text-xs flex items-center gap-1.5 transition-colors"
                       >
-                        {isCancelling === r.Reservation_ID ? <CircleNotchIcon size={14} className="animate-spin" /> : <XCircleIcon size={14} />}
+                        {isCancelling === r.Reservation_ID ? <CircleNotch size={14} className="animate-spin" /> : <XCircle size={14} />}
                         <span>Cancel Booking</span>
                       </button>
                     </div>
@@ -487,7 +486,7 @@ export const GuestDashboardPage: React.FC = () => {
         <div className="panel-card p-6 border border-acc-200 dark:border-acc-800 rounded-2xl space-y-4">
           <div className="flex justify-between items-center border-b border-acc-100 dark:border-acc-800 pb-3">
             <div className="font-extrabold text-sm text-acc-950 dark:text-acc-50 flex items-center gap-2">
-              <UserIcon size={18} className="text-brand-500" />
+              <User size={18} className="text-brand-500" />
               <span>Guest Personal Details</span>
             </div>
             <span className="text-[10px] font-mono text-acc-400">Verified Customer</span>
@@ -521,7 +520,7 @@ export const GuestDashboardPage: React.FC = () => {
         <div className="panel-card p-6 border border-acc-200 dark:border-acc-800 rounded-2xl space-y-4">
           <div className="flex justify-between items-center border-b border-acc-100 dark:border-acc-800 pb-3">
             <div className="font-extrabold text-sm text-acc-950 dark:text-acc-50 flex items-center gap-2">
-              <BellRingingIcon size={18} className="text-brand-500" />
+              <BellRinging size={18} className="text-brand-500" />
               <span>In-Stay Hotel Services</span>
             </div>
             <button
@@ -628,7 +627,7 @@ export const GuestDashboardPage: React.FC = () => {
                   disabled={isUpdating}
                   className="px-4 py-2 bg-brand-500 text-acc-950 font-bold text-xs rounded-xl flex items-center gap-1"
                 >
-                  {isUpdating ? <CircleNotchIcon size={14} className="animate-spin" /> : null}
+                  {isUpdating ? <CircleNotch size={14} className="animate-spin" /> : null}
                   <span>Save New Schedule</span>
                 </button>
               </div>
@@ -714,7 +713,7 @@ export const GuestDashboardPage: React.FC = () => {
                   disabled={requestingService || (activeReservations.length > 0 && !selectedReservationId)}
                   className="px-4 py-2 bg-brand-500 text-acc-950 font-bold text-xs rounded-xl flex items-center gap-1 font-mono disabled:opacity-50"
                 >
-                  {requestingService ? <CircleNotchIcon size={14} className="animate-spin" /> : null}
+                  {requestingService ? <CircleNotch size={14} className="animate-spin" /> : null}
                   <span>Submit Request</span>
                 </button>
               </div>

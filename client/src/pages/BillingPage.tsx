@@ -2,9 +2,8 @@ import React, { useEffect, useState } from 'react';
 import api from '../services/api';
 import { Bill, Reservation } from '../types';
 import { useAuth } from '../context/AuthContext';
-import { ReceiptIcon, PrinterIcon, DownloadSimpleIcon, PlusIcon, EyeIcon, CheckCircleIcon, CalculatorIcon } from '@phosphor-icons/react';
+import { Receipt, Printer, DownloadSimple, Plus, Eye, CheckCircle, Calculator } from '@phosphor-icons/react';
 import { jsPDF } from 'jspdf';
-import { formatDate } from '../utils/date';
 
 export const BillingPage: React.FC = () => {
   const { user } = useAuth();
@@ -98,7 +97,7 @@ export const BillingPage: React.FC = () => {
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
     doc.text(`Invoice ID: #INV-${viewBill.Bill_ID}`, 14, 28);
-    doc.text(`Billing Date: ${formatDate(viewBill.Billing_Date)}`, 14, 34);
+    doc.text(`Billing Date: ${new Date(viewBill.Billing_Date).toLocaleDateString()}`, 14, 34);
     doc.text(`Guest: ${viewBill.First_Name} ${viewBill.Last_Name}`, 14, 40);
     doc.text(`Hotel: ${viewBill.Hotel_Name}`, 14, 46);
     doc.text(`Room: Room ${viewBill.Room_Number} (${viewBill.Room_Type})`, 14, 52);
@@ -159,9 +158,9 @@ export const BillingPage: React.FC = () => {
         {canGenerate && (
           <button
             onClick={() => setGenModalOpen(true)}
-            className="flex items-center gap-2 px-3 py-2 bg-acc-950 hover:bg-acc-800 dark:bg-brand-500 dark:hover:bg-brand-600 text-white dark:text-acc-950 font-semibold text-xs rounded transition-colors whitespace-nowrap shrink-0"
+            className="flex items-center gap-2 px-3 py-2 bg-acc-950 hover:bg-acc-800 dark:bg-brand-500 dark:hover:bg-brand-600 text-white dark:text-acc-950 font-semibold text-xs rounded transition-colors"
           >
-            <PlusIcon size={16} className="shrink-0" />
+            <Plus size={16} />
             <span>Generate Bill for Guest</span>
           </button>
         )}
@@ -203,7 +202,7 @@ export const BillingPage: React.FC = () => {
                       <div>Room {b.Room_Number}</div>
                       <div className="text-[10px] text-acc-500">{b.Hotel_Name}</div>
                     </td>
-                    <td className="p-3">{formatDate(b.Billing_Date)}</td>
+                    <td className="p-3">{new Date(b.Billing_Date).toLocaleDateString()}</td>
                     <td className="p-3">{b.Payment_Method}</td>
                     <td className="p-3 font-bold text-acc-950 dark:text-acc-50">
                       BDT ৳{Number(b.Final_Amount).toLocaleString('en-US')}
@@ -236,7 +235,7 @@ export const BillingPage: React.FC = () => {
                         onClick={() => handleViewInvoice(b.Bill_ID)}
                         className="px-2 py-1 bg-acc-900 text-white dark:bg-brand-500 dark:text-acc-950 rounded text-[11px] font-mono inline-flex items-center gap-1 hover:opacity-90"
                       >
-                        <EyeIcon size={13} />
+                        <Eye size={13} />
                         <span>View Statement</span>
                       </button>
                     </td>
@@ -338,14 +337,14 @@ export const BillingPage: React.FC = () => {
                   onClick={handlePrint}
                   className="flex items-center gap-1.5 px-3 py-2 border border-acc-300 dark:border-acc-700 rounded-xl text-xs font-mono hover:bg-acc-100"
                 >
-                  <PrinterIcon size={15} />
+                  <Printer size={15} />
                   <span>Print Invoice</span>
                 </button>
                 <button
                   onClick={handleDownloadPDF}
                   className="flex items-center gap-1.5 px-3 py-2 bg-acc-950 text-white dark:bg-brand-500 dark:text-acc-950 rounded-xl text-xs font-mono font-semibold"
                 >
-                  <DownloadSimpleIcon size={15} />
+                  <DownloadSimple size={15} />
                   <span>Download PDF</span>
                 </button>
                 <button
@@ -368,7 +367,7 @@ export const BillingPage: React.FC = () => {
                 <div className="text-right">
                   <h3 className="text-xl font-bold font-mono text-acc-900 dark:text-acc-100">INVOICE</h3>
                   <p className="text-xs font-mono text-acc-500">Invoice ID: #INV-{viewBill.Bill_ID}</p>
-                  <p className="text-xs font-mono text-acc-500">Date: {formatDate(viewBill.Billing_Date)}</p>
+                  <p className="text-xs font-mono text-acc-500">Date: {new Date(viewBill.Billing_Date).toLocaleDateString()}</p>
                 </div>
               </div>
 
@@ -383,8 +382,8 @@ export const BillingPage: React.FC = () => {
                 <div>
                   <p className="text-[10px] uppercase text-acc-500 font-semibold">Stay Summary</p>
                   <p className="font-bold text-acc-950 dark:text-acc-50 mt-0.5">Room {viewBill.Room_Number} ({viewBill.Room_Type})</p>
-                  <p className="text-acc-600 dark:text-acc-300">Check In: {formatDate(viewBill.Check_In_Date)}</p>
-                  <p className="text-acc-600 dark:text-acc-300">Check Out: {formatDate(viewBill.Check_Out_Date)}</p>
+                  <p className="text-acc-600 dark:text-acc-300">Check In: {new Date(viewBill.Check_In_Date || '').toLocaleDateString()}</p>
+                  <p className="text-acc-600 dark:text-acc-300">Check Out: {new Date(viewBill.Check_Out_Date || '').toLocaleDateString()}</p>
                 </div>
               </div>
 

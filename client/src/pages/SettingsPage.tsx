@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { GearIcon, GlobeIcon, DatabaseIcon, ShieldCheckIcon, CheckCircleIcon } from '@phosphor-icons/react';
+import { Gear, Globe, Database, ShieldCheck, CheckCircle } from '@phosphor-icons/react';
 
 export const SettingsPage: React.FC = () => {
   const [currency, setCurrency] = useState('BDT (৳)');
@@ -25,7 +25,7 @@ export const SettingsPage: React.FC = () => {
 
       {saved && (
         <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 rounded text-xs flex items-center gap-2">
-          <CheckCircleIcon size={16} />
+          <CheckCircle size={16} />
           <span>System configuration saved successfully.</span>
         </div>
       )}
@@ -58,7 +58,7 @@ export const SettingsPage: React.FC = () => {
         </div>
 
         <h3 className="font-bold text-sm text-acc-950 dark:text-acc-50 border-b border-acc-100 dark:border-acc-800 pb-2 pt-2">
-          DatabaseIcon Connection Information
+          Database Connection Information
         </h3>
 
         <div className="p-3 bg-acc-50 dark:bg-acc-850 rounded border border-acc-200 dark:border-acc-800 font-mono text-xs space-y-1">

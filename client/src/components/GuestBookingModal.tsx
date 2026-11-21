@@ -4,15 +4,15 @@ import api from '../services/api';
 import { Hotel, Room } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { 
-  CalendarBlankIcon, 
-  BedIcon, 
-  UsersIcon, 
+  CalendarBlank, 
+  Bed, 
+  Users, 
   Buildings, 
-  CheckCircleIcon, 
-  CircleNotchIcon, 
-  XIcon,
-  ReceiptIcon,
-  SparkleIcon
+  CheckCircle, 
+  CircleNotch, 
+  X,
+  Receipt,
+  Sparkle
 } from '@phosphor-icons/react';
 
 interface GuestBookingModalProps {
@@ -175,13 +175,13 @@ export const GuestBookingModal: React.FC<GuestBookingModalProps> = ({
           onClick={onClose}
           className="absolute top-5 right-5 p-2 text-acc-400 hover:text-acc-900 dark:hover:text-white hover:bg-acc-100 dark:hover:bg-acc-800 rounded-full transition-colors"
         >
-          <XIcon size={20} />
+          <X size={20} />
         </button>
 
         {/* Header */}
         <div className="space-y-1">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-brand-500/15 border border-brand-500/30 rounded-full text-brand-600 dark:text-brand-400 font-mono text-[10px] font-bold uppercase tracking-wider">
-            <SparkleIcon size={12} weight="fill" />
+            <Sparkle size={12} weight="fill" />
             <span>GUEST RESERVATION</span>
           </div>
           <h2 className="text-xl font-extrabold text-acc-950 dark:text-acc-50 tracking-tight">
@@ -200,7 +200,7 @@ export const GuestBookingModal: React.FC<GuestBookingModalProps> = ({
 
         {successMsg && (
           <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 rounded-xl text-emerald-800 dark:text-emerald-300 text-xs font-mono flex items-center gap-2">
-            <CheckCircleIcon size={20} className="text-emerald-500 shrink-0" />
+            <CheckCircle size={20} className="text-emerald-500 shrink-0" />
             <span>{successMsg}</span>
           </div>
         )}
@@ -215,7 +215,7 @@ export const GuestBookingModal: React.FC<GuestBookingModalProps> = ({
             </label>
             {loadingHotels ? (
               <div className="p-2 text-acc-400 font-mono text-[11px] flex items-center gap-2">
-                <CircleNotchIcon size={14} className="animate-spin" /> Loading hotel branches...
+                <CircleNotch size={14} className="animate-spin" /> Loading hotel branches...
               </div>
             ) : (
               <select
@@ -236,7 +236,7 @@ export const GuestBookingModal: React.FC<GuestBookingModalProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <label className="block font-medium mb-1 text-acc-700 dark:text-acc-300 flex items-center gap-1">
-                <CalendarBlankIcon size={14} className="text-brand-500" />
+                <CalendarBlank size={14} className="text-brand-500" />
                 <span>Check-In Date *</span>
               </label>
               <input
@@ -251,7 +251,7 @@ export const GuestBookingModal: React.FC<GuestBookingModalProps> = ({
 
             <div>
               <label className="block font-medium mb-1 text-acc-700 dark:text-acc-300 flex items-center gap-1">
-                <CalendarBlankIcon size={14} className="text-brand-500" />
+                <CalendarBlank size={14} className="text-brand-500" />
                 <span>Check-Out Date *</span>
               </label>
               <input
@@ -266,7 +266,7 @@ export const GuestBookingModal: React.FC<GuestBookingModalProps> = ({
 
             <div>
               <label className="block font-medium mb-1 text-acc-700 dark:text-acc-300 flex items-center gap-1">
-                <UsersIcon size={14} className="text-brand-500" />
+                <Users size={14} className="text-brand-500" />
                 <span>Guests *</span>
               </label>
               <input
@@ -283,13 +283,13 @@ export const GuestBookingModal: React.FC<GuestBookingModalProps> = ({
           {/* Step 3: Room Selection */}
           <div className="space-y-2">
             <label className="block font-bold text-acc-900 dark:text-acc-100 flex items-center gap-1.5">
-              <BedIcon size={16} className="text-brand-500" />
+              <Bed size={16} className="text-brand-500" />
               <span>2. Choose Available Room ({availableRooms.length} Available)</span>
             </label>
 
             {loadingRooms ? (
               <div className="p-4 text-center text-acc-500 font-mono text-xs flex items-center justify-center gap-2">
-                <CircleNotchIcon size={16} className="animate-spin text-brand-500" />
+                <CircleNotch size={16} className="animate-spin text-brand-500" />
                 <span>Checking live room inventory...</span>
               </div>
             ) : availableRooms.length === 0 ? (
@@ -321,7 +321,7 @@ export const GuestBookingModal: React.FC<GuestBookingModalProps> = ({
                           </div>
                         </div>
                         {isSelected && (
-                          <CheckCircleIcon size={18} weight="fill" className="text-brand-500 shrink-0" />
+                          <CheckCircle size={18} weight="fill" className="text-brand-500 shrink-0" />
                         )}
                       </div>
 
@@ -343,7 +343,7 @@ export const GuestBookingModal: React.FC<GuestBookingModalProps> = ({
             <div className="p-4 bg-acc-950 text-white rounded-xl space-y-2 font-mono text-xs border border-acc-800 shadow-inner">
               <div className="flex justify-between items-center border-b border-acc-800 pb-2">
                 <span className="font-bold flex items-center gap-1.5 text-brand-400">
-                  <ReceiptIcon size={16} /> Estimated Invoice Summary
+                  <Receipt size={16} /> Estimated Invoice Summary
                 </span>
                 <span className="text-[11px] text-acc-400">{nights} Night(s)</span>
               </div>
@@ -371,13 +371,13 @@ export const GuestBookingModal: React.FC<GuestBookingModalProps> = ({
             >
               {submitting ? (
                 <>
-                  <CircleNotchIcon size={18} className="animate-spin" />
+                  <CircleNotch size={18} className="animate-spin" />
                   <span>Confirming Reservation...</span>
                 </>
               ) : (
                 <>
                   <span>Confirm & Book Reservation</span>
-                  <CheckCircleIcon size={18} weight="fill" />
+                  <CheckCircle size={18} weight="fill" />
                 </>
               )}
             </button>

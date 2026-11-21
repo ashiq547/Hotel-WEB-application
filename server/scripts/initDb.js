@@ -81,8 +81,6 @@ async function initDb() {
     try { await connection.query(`ALTER TABLE Service ADD COLUMN Service_Name VARCHAR(100);`); } catch (e) {}
     try { await connection.query(`ALTER TABLE Service ADD COLUMN Service_Charge DECIMAL(10,2) DEFAULT 0;`); } catch (e) {}
     try { await connection.query(`ALTER TABLE Service ADD COLUMN Service_Description TEXT;`); } catch (e) {}
-    try { await connection.query(`ALTER TABLE Bill ADD COLUMN Billing_Date DATE DEFAULT (CURRENT_DATE);`); } catch (e) {}
-    try { await connection.query(`ALTER TABLE Bill ADD COLUMN Final_Amount DECIMAL(10,2) DEFAULT 0;`); } catch (e) {}
 
     // Seed 6 Hotels in Bangladesh
     console.log('Seeding 6 Bangladesh Hotels (Dhaka, Cox\'s Bazar, Sylhet, Chittagong, Rangamati, Sreemangal)...');
@@ -110,8 +108,7 @@ async function initDb() {
     await connection.query(`
       INSERT INTO Employee (Employee_ID, Hotel_ID, Full_Name, Role, Designation, Salary, Joining_Date, Employment_Status, Username, Password) VALUES
       (1, 1, 'System Administrator', 'Admin', 'System Admin', 120000.00, '2024-01-01', 'Active', 'admin', 'admin123'),
-      (2, 1, 'Mahmud Hasan', 'Receptionist', 'Front Desk Executive', 45000.00, '2024-06-15', 'Active', 'receptionist', 'admin123'),
-      (3, 1, 'Second Administrator', 'Admin', 'System Admin 2', 120000.00, '2024-01-01', 'Active', 'admin2', '54321');
+      (2, 1, 'Mahmud Hasan', 'Receptionist', 'Front Desk Executive', 45000.00, '2024-06-15', 'Active', 'receptionist', 'admin123');
     `);
 
     // Seed Rooms across all 6 hotels

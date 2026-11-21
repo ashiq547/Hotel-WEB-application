@@ -15,7 +15,6 @@ import { EmployeesPage } from './pages/EmployeesPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { GuestDashboardPage } from './pages/GuestDashboardPage';
-import { ProfilePage } from './pages/ProfilePage';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { token, loading } = useAuth();
@@ -56,7 +55,6 @@ export const App: React.FC = () => {
             <Route path="employees" element={<ProtectedRoute><EmployeesPage /></ProtectedRoute>} />
             <Route path="reports" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} />
             <Route path="settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
-            <Route path="profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
           </Route>
 
           {/* Catch-all fallback always redirects to Home Page */}

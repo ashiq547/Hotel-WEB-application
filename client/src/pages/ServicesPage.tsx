@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import api from '../services/api';
 import { Service, ServiceRecord, Guest } from '../types';
 import { useAuth } from '../context/AuthContext';
-import { PlusIcon, BellRingingIcon, UserPlusIcon, PencilSimpleIcon, TrashIcon } from '@phosphor-icons/react';
+import { Plus, BellRinging, UserPlus, PencilSimple, Trash } from '@phosphor-icons/react';
 
 export const ServicesPage: React.FC = () => {
   const { user } = useAuth();
@@ -110,14 +110,14 @@ export const ServicesPage: React.FC = () => {
               onClick={() => setAssignModalOpen(true)}
               className="flex items-center gap-2 px-3 py-2 border border-acc-300 dark:border-acc-700 bg-white dark:bg-acc-900 text-acc-900 dark:text-acc-100 font-semibold text-xs rounded hover:bg-acc-100 transition-colors"
             >
-              <UserPlusIcon size={16} />
+              <UserPlus size={16} />
               <span>Assign Service to Guest</span>
             </button>
             <button
               onClick={() => setServiceModalOpen(true)}
               className="flex items-center gap-2 px-3 py-2 bg-acc-950 hover:bg-acc-800 dark:bg-brand-500 dark:hover:bg-brand-600 text-white dark:text-acc-950 font-semibold text-xs rounded transition-colors"
             >
-              <PlusIcon size={16} />
+              <Plus size={16} />
               <span>Add Service Item</span>
             </button>
           </div>
@@ -126,7 +126,7 @@ export const ServicesPage: React.FC = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        {/* Service Catalog ListIcon */}
+        {/* Service Catalog List */}
         <div className="space-y-3 lg:col-span-1">
           <h3 className="text-xs font-mono uppercase tracking-wider text-acc-500 font-semibold">
             Catalog Services

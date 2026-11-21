@@ -2,11 +2,11 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { 
-  UserCheckIcon, 
-  ArrowRightIcon, 
-  CircleNotchIcon,
-  EnvelopeIcon,
-  LockKeyIcon
+  UserCheck, 
+  ArrowRight, 
+  CircleNotch,
+  Envelope,
+  LockKey
 } from '@phosphor-icons/react';
 
 export const GuestLoginPage: React.FC = () => {
@@ -39,7 +39,7 @@ export const GuestLoginPage: React.FC = () => {
         {/* Header */}
         <div className="text-center space-y-2 border-b border-acc-100 dark:border-acc-800 pb-4">
           <div className="inline-flex items-center justify-center p-3 bg-brand-500/10 rounded-full text-brand-600 dark:text-brand-400 mb-1">
-            <UserCheckIcon size={28} weight="bold" />
+            <UserCheck size={28} weight="bold" />
           </div>
           <h1 className="text-xl font-extrabold tracking-tight text-acc-950 dark:text-acc-50">
             Guest Account Sign In
@@ -59,7 +59,7 @@ export const GuestLoginPage: React.FC = () => {
           
           <div>
             <label className="block text-xs font-medium mb-1 flex items-center gap-1">
-              <EnvelopeIcon size={14} className="text-brand-500" />
+              <Envelope size={14} className="text-brand-500" />
               <span>Email ID or Username *</span>
             </label>
             <input
@@ -74,7 +74,7 @@ export const GuestLoginPage: React.FC = () => {
 
           <div>
             <label className="block text-xs font-medium mb-1 flex items-center gap-1">
-              <LockKeyIcon size={14} className="text-brand-500" />
+              <LockKey size={14} className="text-brand-500" />
               <span>Password *</span>
             </label>
             <input
@@ -95,13 +95,13 @@ export const GuestLoginPage: React.FC = () => {
             >
               {isSubmitting ? (
                 <>
-                  <CircleNotchIcon size={18} className="animate-spin" />
+                  <CircleNotch size={18} className="animate-spin" />
                   <span>Authenticating Guest Account...</span>
                 </>
               ) : (
                 <>
                   <span>Sign In to Customer Dashboard</span>
-                  <ArrowRightIcon size={16} />
+                  <ArrowRight size={16} />
                 </>
               )}
             </button>

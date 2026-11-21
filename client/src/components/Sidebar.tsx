@@ -2,16 +2,14 @@ import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
-  HouseIcon,
-  SquaresFourIcon,
+  House,
+  SquaresFour,
   Buildings,
-  BedIcon,
+  Bed,
   UserGear,
-  BellRingingIcon,
-  ReceiptIcon,
-  ShieldCheckIcon,
-  ChartBar,
-  GearIcon
+  BellRinging,
+  Receipt,
+  ShieldCheck
 } from '@phosphor-icons/react';
 
 export const Sidebar: React.FC = () => {
@@ -25,7 +23,7 @@ export const Sidebar: React.FC = () => {
         {/* Header Badge */}
         <div className="px-3 py-2 bg-acc-900 border border-acc-800 rounded flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <ShieldCheckIcon size={16} className="text-emerald-400" />
+            <ShieldCheck size={16} className="text-emerald-400" />
             <span className="font-mono text-[10px] font-bold text-acc-200 tracking-wider">STAFF CONTROL PANEL</span>
           </div>
           <span className="badge-pill bg-brand-500 text-acc-950 font-mono text-[9px] font-bold">{currentRole}</span>
@@ -48,7 +46,7 @@ export const Sidebar: React.FC = () => {
               }`
             }
           >
-            <SquaresFourIcon size={16} />
+            <SquaresFour size={16} />
             <span>Dashboard</span>
           </NavLink>
 
@@ -76,7 +74,7 @@ export const Sidebar: React.FC = () => {
               }`
             }
           >
-            <BedIcon size={16} />
+            <Bed size={16} />
             <span>Room Inventory</span>
           </NavLink>
 
@@ -95,7 +93,7 @@ export const Sidebar: React.FC = () => {
               }`
             }
           >
-            <BellRingingIcon size={16} />
+            <BellRinging size={16} />
             <span>Service Desk</span>
           </NavLink>
 
@@ -109,7 +107,7 @@ export const Sidebar: React.FC = () => {
               }`
             }
           >
-            <ReceiptIcon size={16} />
+            <Receipt size={16} />
             <span>Billing & Invoices</span>
           </NavLink>
 
@@ -133,36 +131,6 @@ export const Sidebar: React.FC = () => {
               <span>Employees</span>
             </NavLink>
           )}
-
-          {(currentRole === 'Admin' || currentRole === 'Manager') && (
-            <NavLink
-              to="/reports"
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2 rounded font-medium transition-all ${
-                  isActive
-                    ? 'bg-brand-500 text-acc-950 font-extrabold shadow'
-                    : 'text-acc-300 hover:bg-acc-850 hover:text-white'
-                }`
-              }
-            >
-              <ChartBar size={16} />
-              <span>Reports & Analytics</span>
-            </NavLink>
-          )}
-
-          <NavLink
-            to="/settings"
-            className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2 rounded font-medium transition-all ${
-                isActive
-                  ? 'bg-brand-500 text-acc-950 font-extrabold shadow'
-                  : 'text-acc-300 hover:bg-acc-850 hover:text-white'
-              }`
-            }
-          >
-            <GearIcon size={16} />
-            <span>Settings</span>
-          </NavLink>
 
         </nav>
       </div>

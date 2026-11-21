@@ -6,14 +6,14 @@ import { useAuth } from '../context/AuthContext';
 import { HotelCardSkeleton } from '../components/SkeletonLoader';
 import { GuestBookingModal } from '../components/GuestBookingModal';
 import { 
-  PlusIcon, 
-  PencilSimpleIcon, 
-  TrashIcon, 
-  StarIcon, 
-  BedIcon, 
-  MapPinIcon, 
-  ArrowRightIcon,
-  CircleNotchIcon,
+  Plus, 
+  PencilSimple, 
+  Trash, 
+  Star, 
+  Bed, 
+  MapPin, 
+  ArrowRight,
+  CircleNotch,
   Image as ImageIcon
 } from '@phosphor-icons/react';
 
@@ -178,7 +178,7 @@ export const HotelsPage: React.FC = () => {
         <div className="bg-white dark:bg-acc-900 rounded-lg p-2 flex flex-col md:flex-row items-center gap-3">
           
           <div className="flex-1 flex items-center gap-2 px-3 py-1.5 border border-acc-200 dark:border-acc-700 rounded text-xs">
-            <BedIcon size={16} className="text-acc-400" />
+            <Bed size={16} className="text-acc-400" />
             <select
               value={search}
               onChange={(e) => {
@@ -195,14 +195,14 @@ export const HotelsPage: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2 px-3 py-1.5 border border-acc-200 dark:border-acc-700 rounded text-xs font-mono">
-            <span>Fri, Aug 7 — SunIcon, Aug 9</span>
+            <span>Fri, Aug 7 — Sun, Aug 9</span>
           </div>
 
           <button
             onClick={fetchHotels}
             className="px-6 py-2 bg-brand-500 hover:bg-brand-600 text-acc-950 font-extrabold text-xs rounded shadow transition-all flex items-center gap-1 active:scale-95"
           >
-            {loading ? <CircleNotchIcon size={14} className="animate-spin" /> : null}
+            {loading ? <CircleNotch size={14} className="animate-spin" /> : null}
             <span>Search</span>
           </button>
         </div>
@@ -223,13 +223,13 @@ export const HotelsPage: React.FC = () => {
               onClick={openCreateModal}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-acc-950 text-white dark:bg-brand-500 dark:text-acc-950 font-bold text-xs rounded shadow hover:opacity-90 transition-all"
             >
-              <PlusIcon size={14} />
+              <Plus size={14} />
               <span>Add Hotel</span>
             </button>
           )}
         </div>
 
-        {/* Hotel Property Cards ListIcon */}
+        {/* Hotel Property Cards List */}
         {loading ? (
           <div className="space-y-4">
             <HotelCardSkeleton />
@@ -272,7 +272,7 @@ export const HotelsPage: React.FC = () => {
                 {/* Right Content & Pricing Info */}
                 <div className="flex-1 flex flex-col justify-between space-y-3">
                   
-                  {/* Top Row: Title & StarIcon Rating (No Genius Badge, No Dummy Review Score) */}
+                  {/* Top Row: Title & Star Rating (No Genius Badge, No Dummy Review Score) */}
                   <div className="flex justify-between items-start gap-2">
                     <div>
                       <div className="flex items-center gap-2">
@@ -281,13 +281,13 @@ export const HotelsPage: React.FC = () => {
                         </h3>
                         <div className="flex text-amber-500">
                           {Array.from({ length: h.Star_Rating || 5 }).map((_, i) => (
-                            <StarIcon key={i} size={12} weight="fill" />
+                            <Star key={i} size={12} weight="fill" />
                           ))}
                         </div>
                       </div>
 
                       <div className="flex items-center gap-1 text-[11px] text-acc-500 font-mono mt-1">
-                        <MapPinIcon size={13} className="text-brand-500" />
+                        <MapPin size={13} className="text-brand-500" />
                         <span className="font-semibold text-acc-800 dark:text-acc-200">{h.City}</span>
                         <span>• {h.Address || 'Central Location'}</span>
                       </div>
@@ -338,7 +338,7 @@ export const HotelsPage: React.FC = () => {
                             className="p-1.5 border border-acc-300 rounded text-xs hover:bg-acc-100"
                             title="Edit Hotel"
                           >
-                            <PencilSimpleIcon size={14} />
+                            <PencilSimple size={14} />
                           </button>
                         )}
                         {canDelete && (
@@ -349,7 +349,7 @@ export const HotelsPage: React.FC = () => {
                             title="Delete Hotel"
                             aria-label={`Delete ${h.Hotel_Name}`}
                           >
-                            {deletingHotelId === h.Hotel_ID ? <CircleNotchIcon size={14} className="animate-spin" /> : <TrashIcon size={14} />}
+                            {deletingHotelId === h.Hotel_ID ? <CircleNotch size={14} className="animate-spin" /> : <Trash size={14} />}
                           </button>
                         )}
                         <button
@@ -357,10 +357,10 @@ export const HotelsPage: React.FC = () => {
                           className="px-4 py-2 bg-brand-500 hover:bg-brand-600 text-acc-950 font-extrabold text-xs rounded shadow flex items-center gap-1 font-mono active:scale-95 transition-transform"
                         >
                           {btnLoading === h.Hotel_ID ? (
-                            <CircleNotchIcon size={14} className="animate-spin" />
+                            <CircleNotch size={14} className="animate-spin" />
                           ) : null}
                           <span>Check prices</span>
-                          <ArrowRightIcon size={14} />
+                          <ArrowRight size={14} />
                         </button>
                       </div>
                     </div>
@@ -427,7 +427,7 @@ export const HotelsPage: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-medium mb-1">Contact PhoneIcon Number</label>
+                <label className="block text-xs font-medium mb-1">Contact Phone Number</label>
                 <input
                   type="text"
                   value={formData.Contact_Number}
@@ -457,7 +457,7 @@ export const HotelsPage: React.FC = () => {
                   disabled={savingHotel}
                   className="px-4 py-1.5 bg-acc-950 text-white font-bold text-xs rounded flex items-center gap-1"
                 >
-                  {savingHotel ? <CircleNotchIcon size={14} className="animate-spin" /> : null}
+                  {savingHotel ? <CircleNotch size={14} className="animate-spin" /> : null}
                   <span>Save Hotel</span>
                 </button>
               </div>
