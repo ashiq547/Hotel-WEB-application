@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { ChartLineUp, DownloadSimple, FileText, Users, CurrencyDollar, CalendarCheck } from '@phosphor-icons/react';
+import { ChartLineUpIcon, DownloadSimpleIcon, FileTextIcon, UsersIcon, CurrencyDollarIcon, CalendarCheckIcon } from '@phosphor-icons/react';
 import { jsPDF } from 'jspdf';
 import { formatReportCell } from '../utils/reportCell';
 
@@ -92,14 +92,14 @@ export const ReportsPage: React.FC = () => {
             onClick={handleExportCSV}
             className="flex items-center gap-1.5 px-3 py-2 border border-acc-300 dark:border-acc-700 bg-white dark:bg-acc-900 text-xs font-mono rounded hover:bg-acc-100 transition-colors whitespace-nowrap shrink-0"
           >
-            <DownloadSimple size={15} className="shrink-0" />
+            <DownloadSimpleIcon size={15} className="shrink-0" />
             <span>Export CSV</span>
           </button>
           <button
             onClick={handleExportPDF}
             className="flex items-center gap-1.5 px-3 py-2 bg-acc-950 text-white dark:bg-brand-500 dark:text-acc-950 font-semibold text-xs font-mono rounded whitespace-nowrap shrink-0"
           >
-            <FileText size={15} className="shrink-0" />
+            <FileTextIcon size={15} className="shrink-0" />
             <span>Export PDF</span>
           </button>
         </div>

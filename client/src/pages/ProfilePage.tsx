@@ -2,18 +2,18 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import {
-  User,
-  EnvelopeSimple,
-  Phone,
-  IdentificationCard,
-  CalendarBlank,
-  ShieldCheck,
-  LockKey,
-  CircleNotch,
-  CheckCircle,
-  Warning,
-  EyeSlash,
-  Eye
+  UserIcon,
+  EnvelopeSimpleIcon,
+  PhoneIcon,
+  IdentificationCardIcon,
+  CalendarBlankIcon,
+  ShieldCheckIcon,
+  LockKeyIcon,
+  CircleNotchIcon,
+  CheckCircleIcon,
+  WarningIcon,
+  EyeSlashIcon,
+  EyeIcon
 } from '@phosphor-icons/react';
 
 export const ProfilePage: React.FC = () => {
@@ -100,15 +100,15 @@ export const ProfilePage: React.FC = () => {
 
   const infoRows: { label: string; value: string; icon: React.ReactNode }[] = profile
     ? [
-      { label: 'Full Name', value: profile.name || '—', icon: <User size={16} /> },
-      { label: 'Username', value: profile.username || '—', icon: <ShieldCheck size={16} /> },
-      { label: 'Role', value: String(profile.role || role), icon: <ShieldCheck size={16} /> },
-      ...(profile.email ? [{ label: 'Email', value: profile.email, icon: <EnvelopeSimple size={16} /> }] : []),
-      ...(profile.phone ? [{ label: 'Phone', value: String(profile.phone), icon: <Phone size={16} /> }] : []),
-      ...(profile.identification ? [{ label: 'Identification No.', value: String(profile.identification), icon: <IdentificationCard size={16} /> }] : []),
-      ...(profile.nationality ? [{ label: 'Nationality', value: String(profile.nationality), icon: <IdentificationCard size={16} /> }] : []),
-      ...(profile.designation ? [{ label: 'Designation', value: String(profile.designation), icon: <ShieldCheck size={16} /> }] : []),
-      ...(profile.joined ? [{ label: 'Joined On', value: new Date(profile.joined).toLocaleDateString(), icon: <CalendarBlank size={16} /> }] : [])
+      { label: 'Full Name', value: profile.name || '—', icon: <UserIcon size={16} /> },
+      { label: 'Username', value: profile.username || '—', icon: <ShieldCheckIcon size={16} /> },
+      { label: 'Role', value: String(profile.role || role), icon: <ShieldCheckIcon size={16} /> },
+      ...(profile.email ? [{ label: 'Email', value: profile.email, icon: <EnvelopeSimpleIcon size={16} /> }] : []),
+      ...(profile.phone ? [{ label: 'Phone', value: String(profile.phone), icon: <PhoneIcon size={16} /> }] : []),
+      ...(profile.identification ? [{ label: 'Identification No.', value: String(profile.identification), icon: <IdentificationCardIcon size={16} /> }] : []),
+      ...(profile.nationality ? [{ label: 'Nationality', value: String(profile.nationality), icon: <IdentificationCardIcon size={16} /> }] : []),
+      ...(profile.designation ? [{ label: 'Designation', value: String(profile.designation), icon: <ShieldCheckIcon size={16} /> }] : []),
+      ...(profile.joined ? [{ label: 'Joined On', value: new Date(profile.joined).toLocaleDateString(), icon: <CalendarBlankIcon size={16} /> }] : [])
     ]
     : [];
 
@@ -118,7 +118,7 @@ export const ProfilePage: React.FC = () => {
   if (loadingProfile) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
-        <CircleNotch size={32} className="animate-spin text-brand-500" />
+        <CircleNotchIcon size={32} className="animate-spin text-brand-500" />
       </div>
     );
   }
@@ -162,7 +162,7 @@ export const ProfilePage: React.FC = () => {
       {/* Change Password Card */}
       <section className="rounded-lg border border-acc-200 dark:border-acc-800 bg-white dark:bg-acc-900 shadow-sm">
         <div className="flex items-center gap-2 p-4 border-b border-acc-200 dark:border-acc-800">
-          <LockKey size={18} className="text-brand-500" />
+          <LockKeyIcon size={18} className="text-brand-500" />
           <h2 className="text-sm font-bold text-acc-950 dark:text-acc-50">Change Password</h2>
         </div>
 
@@ -186,7 +186,7 @@ export const ProfilePage: React.FC = () => {
                 className="absolute right-2.5 top-1/2 -translate-y-1/2 text-acc-400 hover:text-acc-600"
                 tabIndex={-1}
               >
-                {showOld ? <EyeSlash size={16} /> : <Eye size={16} />}
+                {showOld ? <EyeSlashIcon size={16} /> : <EyeIcon size={16} />}
               </button>
             </div>
           </div>
@@ -211,7 +211,7 @@ export const ProfilePage: React.FC = () => {
                   className="absolute right-2.5 top-1/2 -translate-y-1/2 text-acc-400 hover:text-acc-600"
                   tabIndex={-1}
                 >
-                  {showNew ? <EyeSlash size={16} /> : <Eye size={16} />}
+                  {showNew ? <EyeSlashIcon size={16} /> : <EyeIcon size={16} />}
                 </button>
               </div>
             </div>
@@ -234,7 +234,7 @@ export const ProfilePage: React.FC = () => {
                     className="absolute right-2.5 top-1/2 -translate-y-1/2 text-acc-400 hover:text-acc-600"
                     tabIndex={-1}
                   >
-                    {showConfirm ? <EyeSlash size={16} /> : <Eye size={16} />}
+                    {showConfirm ? <EyeSlashIcon size={16} /> : <EyeIcon size={16} />}
                   </button>
                 </div>
               </div>
@@ -247,7 +247,7 @@ export const ProfilePage: React.FC = () => {
                     : 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400'
                   }`}
               >
-                {feedback.type === 'success' ? <CheckCircle size={16} /> : <Warning size={16} />}
+                {feedback.type === 'success' ? <CheckCircleIcon size={16} /> : <WarningIcon size={16} />}
                 {feedback.msg}
               </div>
             )}
@@ -260,12 +260,12 @@ export const ProfilePage: React.FC = () => {
               >
                 {changing ? (
                   <>
-                    <CircleNotch size={14} className="animate-spin" />
+                    <CircleNotchIcon size={14} className="animate-spin" />
                     Updating...
                   </>
                 ) : (
                   <>
-                    <LockKey size={14} />
+                    <LockKeyIcon size={14} />
                     Update Password
                   </>
                 )}

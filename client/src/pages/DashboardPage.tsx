@@ -3,12 +3,12 @@ import api from '../services/api';
 import { DashboardSummary } from '../types';
 import { 
   Buildings, 
-  Bed, 
-  CheckCircle, 
+  BedIcon, 
+  CheckCircleIcon, 
   Door, 
-  Users, 
-  CalendarCheck, 
-  CurrencyDollar, 
+  UsersIcon, 
+  CalendarCheckIcon, 
+  CurrencyDollarIcon, 
   TrendUp,
   ChartPieSlice,
   ArrowClockwise
@@ -100,7 +100,7 @@ export const DashboardPage: React.FC = () => {
             <h3 className="text-2xl font-bold font-mono text-acc-950 dark:text-acc-50 mt-1">{summary?.totalRooms || 0}</h3>
           </div>
           <div className="w-10 h-10 rounded bg-acc-100 dark:bg-acc-800 flex items-center justify-center text-acc-700 dark:text-acc-200">
-            <Bed size={20} />
+            <BedIcon size={20} />
           </div>
         </div>
 
@@ -111,7 +111,7 @@ export const DashboardPage: React.FC = () => {
             <h3 className="text-2xl font-bold font-mono text-emerald-700 dark:text-emerald-400 mt-1">{summary?.availableRooms || 0}</h3>
           </div>
           <div className="w-10 h-10 rounded bg-emerald-50 dark:bg-emerald-950 flex items-center justify-center text-emerald-600">
-            <CheckCircle size={20} />
+            <CheckCircleIcon size={20} />
           </div>
         </div>
 
@@ -129,11 +129,11 @@ export const DashboardPage: React.FC = () => {
         {/* Guests Today */}
         <div className="panel-card p-4 flex items-center justify-between">
           <div>
-            <p className="text-[11px] font-mono uppercase tracking-wider text-acc-500">Guests In House Today</p>
+            <p className="text-[11px] font-mono uppercase tracking-wider text-acc-500">Guests In HouseIcon Today</p>
             <h3 className="text-2xl font-bold font-mono text-acc-950 dark:text-acc-50 mt-1">{summary?.guestsToday || 0}</h3>
           </div>
           <div className="w-10 h-10 rounded bg-acc-100 dark:bg-acc-800 flex items-center justify-center text-acc-700 dark:text-acc-200">
-            <Users size={20} />
+            <UsersIcon size={20} />
           </div>
         </div>
 
@@ -144,7 +144,7 @@ export const DashboardPage: React.FC = () => {
             <h3 className="text-2xl font-bold font-mono text-acc-950 dark:text-acc-50 mt-1">{summary?.activeReservations || 0}</h3>
           </div>
           <div className="w-10 h-10 rounded bg-acc-100 dark:bg-acc-800 flex items-center justify-center text-acc-700 dark:text-acc-200">
-            <CalendarCheck size={20} />
+            <CalendarCheckIcon size={20} />
           </div>
         </div>
 
@@ -157,7 +157,7 @@ export const DashboardPage: React.FC = () => {
             </h3>
           </div>
           <div className="w-10 h-10 rounded bg-acc-100 dark:bg-acc-800 flex items-center justify-center text-acc-700 dark:text-acc-200">
-            <CurrencyDollar size={20} />
+            <CurrencyDollarIcon size={20} />
           </div>
         </div>
 

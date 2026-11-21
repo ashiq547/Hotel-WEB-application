@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { MapPin, Phone, Envelope, ShieldCheck } from '@phosphor-icons/react';
+import { MapPinIcon, PhoneIcon, EnvelopeIcon, ShieldCheckIcon } from '@phosphor-icons/react';
 
 export const Footer: React.FC = () => {
   return (
@@ -48,15 +48,15 @@ export const Footer: React.FC = () => {
           </h4>
           <ul className="space-y-2 text-acc-400 text-[11px]">
             <li className="flex items-center gap-2">
-              <MapPin size={14} className="text-brand-400 shrink-0" />
+              <MapPinIcon size={14} className="text-brand-400 shrink-0" />
               <span>Independent University, Bangladesh Plot 16, Block B, Aftabuddin Ahmed Road Bashundhara Residential Area, Dhaka 1245 Bangladesh</span>
             </li>
             <li className="flex items-center gap-2">
-              <Phone size={14} className="text-brand-400 shrink-0" />
+              <PhoneIcon size={14} className="text-brand-400 shrink-0" />
               <span>+880-1234-56789</span>
             </li>
             <li className="flex items-center gap-2">
-              <Envelope size={14} className="text-brand-400 shrink-0" />
+              <EnvelopeIcon size={14} className="text-brand-400 shrink-0" />
               <span>support@hotel.com.bd</span>
             </li>
           </ul>

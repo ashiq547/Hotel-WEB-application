@@ -3,13 +3,13 @@ import { useNavigate, Link } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { 
-  UserPlus, 
-  ArrowRight, 
-  CheckCircle, 
-  CircleNotch,
-  User,
-  XCircle,
-  LockKey
+  UserPlusIcon, 
+  ArrowRightIcon, 
+  CheckCircleIcon, 
+  CircleNotchIcon,
+  UserIcon,
+  XCircleIcon,
+  LockKeyIcon
 } from '@phosphor-icons/react';
 
 export const RegisterPage: React.FC = () => {
@@ -98,7 +98,7 @@ export const RegisterPage: React.FC = () => {
     setIsSubmitting(true);
 
     try {
-      // 1. Create Guest & Person in DB with Password
+      // 1. Create Guest & PersonIcon in DB with Password
       const payload = {
         First_Name: form.First_Name,
         Last_Name: form.Last_Name,
@@ -146,7 +146,7 @@ export const RegisterPage: React.FC = () => {
         {/* Header */}
         <div className="text-center space-y-2 border-b border-acc-100 dark:border-acc-800 pb-4">
           <div className="w-12 h-12 rounded bg-brand-500 text-acc-950 flex items-center justify-center mx-auto mb-2 font-bold shadow-sm">
-            <UserPlus size={24} />
+            <UserPlusIcon size={24} />
           </div>
           <h1 className="text-xl font-extrabold tracking-tight text-acc-950 dark:text-acc-50">
             Guest Account Registration
@@ -164,7 +164,7 @@ export const RegisterPage: React.FC = () => {
 
         {successMsg && (
           <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 rounded text-emerald-800 dark:text-emerald-300 text-xs font-mono flex items-center gap-2">
-            <CheckCircle size={18} className="text-emerald-600 shrink-0" />
+            <CheckCircleIcon size={18} className="text-emerald-600 shrink-0" />
             <span>{successMsg}</span>
           </div>
         )}
@@ -199,7 +199,7 @@ export const RegisterPage: React.FC = () => {
           {/* Unique Username Input Field with Real-Time Auto Check */}
           <div>
             <label className="block font-medium mb-1 flex items-center gap-1">
-              <User size={14} className="text-brand-500" />
+              <UserIcon size={14} className="text-brand-500" />
               <span>Unique Username *</span>
             </label>
             <div className="relative">
@@ -218,13 +218,13 @@ export const RegisterPage: React.FC = () => {
                 }`}
               />
               {usernameStatus === 'checking' && (
-                <CircleNotch size={16} className="animate-spin text-amber-500 absolute right-3 top-2.5" />
+                <CircleNotchIcon size={16} className="animate-spin text-amber-500 absolute right-3 top-2.5" />
               )}
               {usernameStatus === 'available' && (
-                <CheckCircle size={16} className="text-emerald-500 absolute right-3 top-2.5" />
+                <CheckCircleIcon size={16} className="text-emerald-500 absolute right-3 top-2.5" />
               )}
               {usernameStatus === 'taken' && (
-                <XCircle size={16} className="text-red-500 absolute right-3 top-2.5" />
+                <XCircleIcon size={16} className="text-red-500 absolute right-3 top-2.5" />
               )}
             </div>
 
@@ -246,7 +246,7 @@ export const RegisterPage: React.FC = () => {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block font-medium mb-1 flex items-center gap-1">
-                <LockKey size={14} className="text-brand-500" />
+                <LockKeyIcon size={14} className="text-brand-500" />
                 <span>Password *</span>
               </label>
               <input
@@ -260,7 +260,7 @@ export const RegisterPage: React.FC = () => {
             </div>
             <div>
               <label className="block font-medium mb-1 flex items-center gap-1">
-                <LockKey size={14} className="text-brand-500" />
+                <LockKeyIcon size={14} className="text-brand-500" />
                 <span>Confirm Password *</span>
               </label>
               <input
@@ -340,13 +340,13 @@ export const RegisterPage: React.FC = () => {
             >
               {isSubmitting ? (
                 <>
-                  <CircleNotch size={18} className="animate-spin" />
+                  <CircleNotchIcon size={18} className="animate-spin" />
                   <span>Registering Account & Loading Booking...</span>
                 </>
               ) : (
                 <>
                   <span>Complete Registration & Book Room</span>
-                  <ArrowRight size={16} />
+                  <ArrowRightIcon size={16} />
                 </>
               )}
             </button>

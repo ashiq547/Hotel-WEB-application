@@ -4,14 +4,14 @@ import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import { Hotel } from '../types';
 import { 
-  CalendarBlank, 
-  MapPin, 
-  ArrowRight,
+  CalendarBlankIcon, 
+  MapPinIcon, 
+  ArrowRightIcon,
   Buildings,
-  Star,
-  Eye,
+  StarIcon,
+  EyeIcon,
   CaretLeft,
-  CaretRight
+  CaretRightIcon
 } from '@phosphor-icons/react';
 
 interface TeamMember {
@@ -117,7 +117,7 @@ export const HomePage: React.FC = () => {
           <div className="bg-white dark:bg-acc-900 rounded-lg grid grid-cols-1 md:grid-cols-12 gap-1 p-1 items-center">
             
             <div className="md:col-span-5 flex items-center gap-2 px-3 py-2 border-b md:border-b-0 md:border-r border-acc-200 dark:border-acc-700">
-              <MapPin size={20} className="text-amber-600 shrink-0" />
+              <MapPinIcon size={20} className="text-amber-600 shrink-0" />
               <div className="w-full">
                 <label className="block text-[9px] uppercase font-mono tracking-wider text-acc-400 font-bold">
                   Hotel Region / Location
@@ -137,7 +137,7 @@ export const HomePage: React.FC = () => {
             </div>
 
             <div className="md:col-span-5 flex items-center gap-2 px-3 py-2 border-b md:border-b-0 md:border-r border-acc-200 dark:border-acc-700">
-              <CalendarBlank size={20} className="text-acc-500 shrink-0" />
+              <CalendarBlankIcon size={20} className="text-acc-500 shrink-0" />
               <div className="w-full grid grid-cols-2 gap-2">
                 <div>
                   <label className="block text-[9px] uppercase font-mono tracking-wider text-acc-400 font-bold">
@@ -170,7 +170,7 @@ export const HomePage: React.FC = () => {
                 className="w-full h-11 bg-brand-500 hover:bg-brand-600 dark:bg-brand-500 dark:hover:bg-brand-600 text-acc-950 font-extrabold text-xs rounded transition-colors flex items-center justify-center gap-1 shadow"
               >
                 <span>Search</span>
-                <ArrowRight size={14} />
+                <ArrowRightIcon size={14} />
               </button>
             </div>
 
@@ -198,7 +198,7 @@ export const HomePage: React.FC = () => {
               className="text-xs font-mono font-bold text-brand-600 dark:text-brand-400 hover:underline flex items-center gap-1"
             >
               <span>View All</span>
-              <ArrowRight size={12} />
+              <ArrowRightIcon size={12} />
             </Link>
 
             {/* Manual Carousel Control Chevrons */}
@@ -215,7 +215,7 @@ export const HomePage: React.FC = () => {
                 className="p-1.5 rounded-full border border-acc-200 dark:border-acc-700 bg-white dark:bg-acc-900 text-acc-800 dark:text-acc-200 hover:bg-brand-500 hover:text-acc-950 transition-colors shadow-xs"
                 title="Next Hotel Slide"
               >
-                <CaretRight size={14} />
+                <CaretRightIcon size={14} />
               </button>
             </div>
           </div>
@@ -244,7 +244,7 @@ export const HomePage: React.FC = () => {
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                   />
                   <div className="absolute top-3 right-3 bg-acc-950/80 backdrop-blur-sm text-amber-400 px-2 py-1 rounded text-[10px] font-mono font-bold flex items-center gap-1 border border-acc-700">
-                    <Star size={12} weight="fill" />
+                    <StarIcon size={12} weight="fill" />
                     <span>{hotel.Star_Rating || 5}-Star</span>
                   </div>
                 </div>
@@ -256,7 +256,7 @@ export const HomePage: React.FC = () => {
                       {hotel.Hotel_Name}
                     </h3>
                     <div className="flex items-center gap-1.5 text-xs text-acc-500 font-sans">
-                      <MapPin size={14} className="text-amber-500 shrink-0" />
+                      <MapPinIcon size={14} className="text-amber-500 shrink-0" />
                       <span className="line-clamp-1">{hotel.Address ? `${hotel.Address}, ` : ''}{hotel.City}</span>
                     </div>
                   </div>
@@ -267,7 +267,7 @@ export const HomePage: React.FC = () => {
                       onClick={() => navigate(`/hotels?destination=${encodeURIComponent(hotel.City)}`)}
                       className="w-full py-2 bg-brand-500 hover:bg-brand-600 text-acc-950 font-extrabold text-xs rounded transition-all flex items-center justify-center gap-1.5 font-mono shadow-xs active:scale-95"
                     >
-                      <Eye size={15} />
+                      <EyeIcon size={15} />
                       <span>View More</span>
                     </button>
                   </div>
@@ -350,7 +350,7 @@ export const HomePage: React.FC = () => {
           </h2>
           
           <p className="text-xs text-acc-500 font-sans leading-relaxed">
-            The engineering and design minds behind Hotel.com Database Management System
+            The engineering and design minds behind Hotel.com DatabaseIcon Management System
           </p>
         </div>
 

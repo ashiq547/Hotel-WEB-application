@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { ArrowRight, LockKey, UserCheck } from '@phosphor-icons/react';
+import { ArrowRightIcon, LockKeyIcon, UserCheckIcon } from '@phosphor-icons/react';
 
 export const LoginPage: React.FC = () => {
   const { login } = useAuth();
@@ -86,14 +86,14 @@ export const LoginPage: React.FC = () => {
             className="w-full py-3 px-4 bg-acc-950 hover:bg-acc-800 dark:bg-brand-500 dark:hover:bg-brand-600 text-white dark:text-acc-950 font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2 font-mono shadow active:scale-95"
           >
             <span>{isSubmitting ? 'Authenticating Staff...' : 'Sign In to Staff Panel'}</span>
-            <ArrowRight size={14} />
+            <ArrowRightIcon size={14} />
           </button>
         </form>
 
         <div className="pt-4 border-t border-acc-100 dark:border-acc-800 flex justify-between items-center text-xs font-mono">
           <span className="text-acc-500">Are you a Hotel Guest?</span>
           <Link to="/guest-login" className="text-brand-600 dark:text-brand-400 font-bold hover:underline flex items-center gap-1">
-            <UserCheck size={14} />
+            <UserCheckIcon size={14} />
             <span>Customer Guest Login →</span>
           </Link>
         </div>

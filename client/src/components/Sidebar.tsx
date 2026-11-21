@@ -2,16 +2,16 @@ import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
-  House,
-  SquaresFour,
+  HouseIcon,
+  SquaresFourIcon,
   Buildings,
-  Bed,
+  BedIcon,
   UserGear,
-  BellRinging,
-  Receipt,
-  ShieldCheck,
+  BellRingingIcon,
+  ReceiptIcon,
+  ShieldCheckIcon,
   ChartBar,
-  Gear
+  GearIcon
 } from '@phosphor-icons/react';
 
 export const Sidebar: React.FC = () => {
@@ -25,7 +25,7 @@ export const Sidebar: React.FC = () => {
         {/* Header Badge */}
         <div className="px-3 py-2 bg-acc-900 border border-acc-800 rounded flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <ShieldCheck size={16} className="text-emerald-400" />
+            <ShieldCheckIcon size={16} className="text-emerald-400" />
             <span className="font-mono text-[10px] font-bold text-acc-200 tracking-wider">STAFF CONTROL PANEL</span>
           </div>
           <span className="badge-pill bg-brand-500 text-acc-950 font-mono text-[9px] font-bold">{currentRole}</span>
@@ -48,7 +48,7 @@ export const Sidebar: React.FC = () => {
               }`
             }
           >
-            <SquaresFour size={16} />
+            <SquaresFourIcon size={16} />
             <span>Dashboard</span>
           </NavLink>
 
@@ -76,7 +76,7 @@ export const Sidebar: React.FC = () => {
               }`
             }
           >
-            <Bed size={16} />
+            <BedIcon size={16} />
             <span>Room Inventory</span>
           </NavLink>
 
@@ -95,7 +95,7 @@ export const Sidebar: React.FC = () => {
               }`
             }
           >
-            <BellRinging size={16} />
+            <BellRingingIcon size={16} />
             <span>Service Desk</span>
           </NavLink>
 
@@ -109,7 +109,7 @@ export const Sidebar: React.FC = () => {
               }`
             }
           >
-            <Receipt size={16} />
+            <ReceiptIcon size={16} />
             <span>Billing & Invoices</span>
           </NavLink>
 
@@ -160,7 +160,7 @@ export const Sidebar: React.FC = () => {
               }`
             }
           >
-            <Gear size={16} />
+            <GearIcon size={16} />
             <span>Settings</span>
           </NavLink>
 

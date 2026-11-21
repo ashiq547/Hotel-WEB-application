@@ -2,14 +2,14 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { 
-  SignOut, 
-  Moon, 
-  Sun, 
-  House,
-  Bed,
-  SquaresFour,
-  UserCheck,
-  LockKey,
+  SignOutIcon, 
+  MoonIcon, 
+  SunIcon, 
+  HouseIcon,
+  BedIcon,
+  SquaresFourIcon,
+  UserCheckIcon,
+  LockKeyIcon,
   UserCircle
 } from '@phosphor-icons/react';
 
@@ -71,7 +71,7 @@ export const Navbar: React.FC = () => {
             isStaff ? 'text-acc-300 hover:bg-acc-850' : 'text-acc-700 dark:text-acc-300 hover:bg-acc-100 dark:hover:bg-acc-800'
           }`}
         >
-          <House size={16} />
+          <HouseIcon size={16} />
           <span className="hidden sm:inline">Home</span>
         </Link>
 
@@ -81,7 +81,7 @@ export const Navbar: React.FC = () => {
             isStaff ? 'text-acc-300 hover:bg-acc-850' : 'text-acc-700 dark:text-acc-300 hover:bg-acc-100 dark:hover:bg-acc-800'
           }`}
         >
-          <Bed size={16} />
+          <BedIcon size={16} />
           <span className="hidden sm:inline">Hotels</span>
         </Link>
 
@@ -91,7 +91,7 @@ export const Navbar: React.FC = () => {
             to="/guest-dashboard"
             className="px-3 py-1.5 bg-brand-500 text-acc-950 font-bold text-xs rounded font-mono flex items-center gap-1.5 shadow"
           >
-            <SquaresFour size={16} />
+            <SquaresFourIcon size={16} />
             <span>My Guest Portal</span>
           </Link>
         )}
@@ -102,7 +102,7 @@ export const Navbar: React.FC = () => {
             to="/dashboard"
             className="px-3 py-1.5 bg-brand-500 text-acc-950 font-bold text-xs rounded font-mono flex items-center gap-1.5 shadow"
           >
-            <SquaresFour size={16} />
+            <SquaresFourIcon size={16} />
             <span>Admin Dashboard</span>
           </Link>
         ) : null}
@@ -115,10 +115,10 @@ export const Navbar: React.FC = () => {
           }`}
           title="Toggle Dark / Light Theme"
         >
-          {isDark ? <Sun size={18} /> : <Moon size={18} />}
+          {isDark ? <SunIcon size={18} /> : <MoonIcon size={18} />}
         </button>
 
-        {/* User Account State: Staff Profile Pill or Guest Login & Staff Portal Login Buttons */}
+        {/* UserIcon Account State: Staff Profile Pill or Guest Login & Staff Portal Login Buttons */}
         <div className={`flex items-center gap-3 pl-3 border-l ${isStaff ? 'border-acc-800' : 'border-acc-200 dark:border-acc-800'}`}>
           {token && user ? (
             <>
@@ -140,7 +140,7 @@ export const Navbar: React.FC = () => {
                 className="p-2 text-acc-400 hover:text-red-400 rounded transition-colors"
                 title="Log Out"
               >
-                <SignOut size={18} />
+                <SignOutIcon size={18} />
               </button>
             </>
           ) : (
@@ -149,7 +149,7 @@ export const Navbar: React.FC = () => {
                 to="/guest-login"
                 className="px-3.5 py-1.5 bg-brand-500 hover:bg-brand-600 text-acc-950 font-bold text-xs rounded transition-colors flex items-center gap-1 font-mono shadow-sm"
               >
-                <UserCheck size={14} />
+                <UserCheckIcon size={14} />
                 <span>Guest Login</span>
               </Link>
               <Link
@@ -157,7 +157,7 @@ export const Navbar: React.FC = () => {
                 className="px-2.5 py-1.5 border border-acc-300 dark:border-acc-700 text-acc-700 dark:text-acc-300 hover:bg-acc-100 dark:hover:bg-acc-800 font-semibold text-xs rounded transition-colors flex items-center gap-1 font-mono"
                 title="Staff Portal Sign In"
               >
-                <LockKey size={13} />
+                <LockKeyIcon size={13} />
                 <span className="hidden md:inline">Portal Login</span>
               </Link>
             </div>

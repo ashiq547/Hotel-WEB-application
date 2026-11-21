@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import api from '../services/api';
 import { Room, Hotel } from '../types';
 import { useAuth } from '../context/AuthContext';
-import { Plus, PencilSimple, Trash, MagnifyingGlass, CircleNotch } from '@phosphor-icons/react';
+import { PlusIcon, PencilSimpleIcon, TrashIcon, MagnifyingGlassIcon, CircleNotchIcon } from '@phosphor-icons/react';
 
 export const RoomsPage: React.FC = () => {
   const { user } = useAuth();
@@ -160,7 +160,7 @@ export const RoomsPage: React.FC = () => {
             onClick={openCreateModal}
             className="flex items-center gap-2 px-3 py-2 bg-acc-950 hover:bg-acc-800 dark:bg-brand-500 dark:hover:bg-brand-600 text-white dark:text-acc-950 font-semibold text-xs rounded transition-all active:scale-95"
           >
-            <Plus size={16} />
+            <PlusIcon size={16} />
             <span>Add New Room</span>
           </button>
         )}
@@ -170,7 +170,7 @@ export const RoomsPage: React.FC = () => {
       <div className="panel-card p-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
         {/* Search */}
         <div className="relative">
-          <MagnifyingGlass size={16} className="absolute left-3 top-2.5 text-acc-400" />
+          <MagnifyingGlassIcon size={16} className="absolute left-3 top-2.5 text-acc-400" />
           <input
             type="text"
             value={search}
@@ -274,7 +274,7 @@ export const RoomsPage: React.FC = () => {
                             className="p-1.5 hover:bg-acc-200 dark:hover:bg-acc-700 rounded text-acc-700 dark:text-acc-300"
                             title="Edit Room"
                           >
-                            <PencilSimple size={15} />
+                            <PencilSimpleIcon size={15} />
                           </button>
                           {user?.role === 'Admin' && (
                             <button
@@ -282,7 +282,7 @@ export const RoomsPage: React.FC = () => {
                               className="p-1.5 hover:bg-red-100 dark:hover:bg-red-950/60 rounded text-red-600 dark:text-red-400"
                               title="Delete Room"
                             >
-                              <Trash size={15} />
+                              <TrashIcon size={15} />
                             </button>
                           )}
                         </div>
@@ -430,7 +430,7 @@ export const RoomsPage: React.FC = () => {
                   disabled={submitting}
                   className="px-4 py-1.5 bg-acc-950 text-white dark:bg-brand-500 dark:text-acc-950 font-semibold text-xs rounded flex items-center gap-1"
                 >
-                  {submitting ? <CircleNotch size={14} className="animate-spin" /> : null}
+                  {submitting ? <CircleNotchIcon size={14} className="animate-spin" /> : null}
                   <span>Save Room</span>
                 </button>
               </div>
