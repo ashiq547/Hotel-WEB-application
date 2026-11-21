@@ -300,7 +300,7 @@ export const GuestDashboardPage: React.FC = () => {
             <Receipt size={18} className="text-brand-500" />
           </div>
           <div className="text-2xl font-extrabold text-acc-950 dark:text-acc-50 font-mono">
-            BDT ৳{Number(summary.totalSpent || 0).toLocaleString()}
+            BDT ৳{Number(summary.totalAmountSpent || summary.totalSpent || 0).toLocaleString()}
           </div>
           <div className="text-[10px] text-acc-400 font-mono">
             Cumulative Invoice Total

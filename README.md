@@ -120,10 +120,10 @@ Open your browser and navigate to **`http://localhost:3000`**.
 - **Username / Phone / Email**: `tanvir` or `+8801700112233`
 - **Password**: `password`
 
-### 🛡️ Default Staff System Admin Account
+### 🛡️ Default Staff System Admin Accounts
 - **Access Route**: `/login`
-- **Admin Username**: `admin`
-- **Admin Password**: `admin123`
+- **Primary Admin**: `admin` / `admin123`
+- **Secondary Admin**: `admin2` / `54321`
 
 ### 👥 Staff User Creation & Role Assignment
 - System administrators can create additional staff accounts via the **Employee Directory (`/employees`)**.

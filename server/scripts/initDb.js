@@ -110,7 +110,8 @@ async function initDb() {
     await connection.query(`
       INSERT INTO Employee (Employee_ID, Hotel_ID, Full_Name, Role, Designation, Salary, Joining_Date, Employment_Status, Username, Password) VALUES
       (1, 1, 'System Administrator', 'Admin', 'System Admin', 120000.00, '2024-01-01', 'Active', 'admin', 'admin123'),
-      (2, 1, 'Mahmud Hasan', 'Receptionist', 'Front Desk Executive', 45000.00, '2024-06-15', 'Active', 'receptionist', 'admin123');
+      (2, 1, 'Mahmud Hasan', 'Receptionist', 'Front Desk Executive', 45000.00, '2024-06-15', 'Active', 'receptionist', 'admin123'),
+      (3, 1, 'Second Administrator', 'Admin', 'System Admin 2', 120000.00, '2024-01-01', 'Active', 'admin2', '54321');
     `);
 
     // Seed Rooms across all 6 hotels
