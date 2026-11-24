@@ -13,11 +13,14 @@ import {
   CheckCircleIcon,
   WarningIcon,
   EyeSlashIcon,
-  EyeIcon
+  EyeIcon,
+  PencilSimpleIcon,
+  CameraIcon,
+  HouseIcon
 } from '@phosphor-icons/react';
 
 export const ProfilePage: React.FC = () => {
-  const { user, token } = useAuth();
+  const { user, token, setSession } = useAuth();
 
   const [profile, setProfile] = useState<any>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
@@ -30,7 +33,14 @@ export const ProfilePage: React.FC = () => {
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [changing, setChanging] = useState(false);
-  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
+  const [pwFeedback, setPwFeedback] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
+
+  // Edit name / image state
+  const [editingName, setEditingName] = useState(false);
+  const [nameValue, setNameValue] = useState('');
+  const [savingName, setSavingName] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [nameFeedback, setNameFeedback] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
 
   const role = user?.role || 'Guest';
 
@@ -43,7 +53,12 @@ export const ProfilePage: React.FC = () => {
       setLoadingProfile(true);
       try {
         const res = await api.get(`/auth/profile/${user.id}`, { params: { role } });
-        setProfile(res.data.profile);
+        setProfile(res.data.profile || {
+          id: user.id,
+          role: user.role,
+          name: user.name,
+          username: user.username
+        });
       } catch (err: any) {
         // Fallback to the JWT session data if the API fails
         setProfile({
@@ -59,20 +74,27 @@ export const ProfilePage: React.FC = () => {
     loadProfile();
   }, [user?.id, user?.role, token]);
 
+  const refreshName = (newName: string) => {
+    setProfile((p: any) => ({ ...(p || {}), name: newName }));
+    if (user) {
+      setSession(token || localStorage.getItem('hms_token') || '', { ...user, name: newName });
+    }
+  };
+
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    setFeedback(null);
+    setPwFeedback(null);
 
     if (!oldPassword || !newPassword || !confirmPassword) {
-      setFeedback({ type: 'error', msg: 'Please fill in all password fields.' });
+      setPwFeedback({ type: 'error', msg: 'Please fill in all password fields.' });
       return;
     }
     if (newPassword.length < 6) {
-      setFeedback({ type: 'error', msg: 'New password must be at least 6 characters long.' });
+      setPwFeedback({ type: 'error', msg: 'New password must be at least 6 characters long.' });
       return;
     }
     if (newPassword !== confirmPassword) {
-      setFeedback({ type: 'error', msg: 'New password and confirmation do not match.' });
+      setPwFeedback({ type: 'error', msg: 'New password and confirmation do not match.' });
       return;
     }
 
@@ -84,12 +106,12 @@ export const ProfilePage: React.FC = () => {
         oldPassword,
         newPassword
       });
-      setFeedback({ type: 'success', msg: res.data.message || 'Password updated successfully.' });
+      setPwFeedback({ type: 'success', msg: res.data.message || 'Password updated successfully.' });
       setOldPassword('');
       setNewPassword('');
       setConfirmPassword('');
     } catch (err: any) {
-      setFeedback({
+      setPwFeedback({
         type: 'error',
         msg: err.response?.data?.error || 'Failed to change password. Please try again.'
       });
@@ -98,18 +120,80 @@ export const ProfilePage: React.FC = () => {
     }
   };
 
+  const handleSaveName = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setNameFeedback(null);
+    const newName = nameValue.trim();
+    if (!newName) {
+      setNameFeedback({ type: 'error', msg: 'Name cannot be empty.' });
+      return;
+    }
+    setSavingName(true);
+    try {
+      await api.post('/auth/update-profile', { id: user?.id, role, name: newName });
+      refreshName(newName);
+      setNameFeedback({ type: 'success', msg: 'Name updated successfully.' });
+      setEditingName(false);
+    } catch (err: any) {
+      setNameFeedback({
+        type: 'error',
+        msg: err.response?.data?.error || 'Failed to update name. Please try again.'
+      });
+    } finally {
+      setSavingName(false);
+    }
+  };
+
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // allow re-picking the same file
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setNameFeedback({ type: 'error', msg: 'Please choose a valid image file.' });
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setNameFeedback({ type: 'error', msg: 'Image is too large. Maximum size is 2MB.' });
+      return;
+    }
+
+    setNameFeedback(null);
+    setUploadingImage(true);
+    try {
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = () => reject(new Error('Failed to read file'));
+        reader.readAsDataURL(file);
+      });
+      await api.post('/auth/update-profile', { id: user?.id, role, image: dataUrl });
+      setProfile((p: any) => ({ ...(p || {}), Profile_Image: dataUrl }));
+      setNameFeedback({ type: 'success', msg: 'Profile image updated successfully.' });
+    } catch (err: any) {
+      setNameFeedback({
+        type: 'error',
+        msg: err.response?.data?.error || 'Failed to upload image. Please try again.'
+      });
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const displayName = profile?.name || user?.name || '?';
+  const initial = displayName.charAt(0).toUpperCase();
+
   const infoRows: { label: string; value: string; icon: React.ReactNode }[] = profile
     ? [
-      { label: 'Full Name', value: profile.name || '—', icon: <UserIcon size={16} /> },
-      { label: 'Username', value: profile.username || '—', icon: <ShieldCheckIcon size={16} /> },
-      { label: 'Role', value: String(profile.role || role), icon: <ShieldCheckIcon size={16} /> },
-      ...(profile.email ? [{ label: 'Email', value: profile.email, icon: <EnvelopeSimpleIcon size={16} /> }] : []),
-      ...(profile.phone ? [{ label: 'Phone', value: String(profile.phone), icon: <PhoneIcon size={16} /> }] : []),
-      ...(profile.identification ? [{ label: 'Identification No.', value: String(profile.identification), icon: <IdentificationCardIcon size={16} /> }] : []),
-      ...(profile.nationality ? [{ label: 'Nationality', value: String(profile.nationality), icon: <IdentificationCardIcon size={16} /> }] : []),
-      ...(profile.designation ? [{ label: 'Designation', value: String(profile.designation), icon: <ShieldCheckIcon size={16} /> }] : []),
-      ...(profile.joined ? [{ label: 'Joined On', value: new Date(profile.joined).toLocaleDateString(), icon: <CalendarBlankIcon size={16} /> }] : [])
-    ]
+        { label: 'Full Name', value: displayName, icon: <UserIcon size={16} /> },
+        { label: 'Username', value: String(profile.username || user?.username || '—'), icon: <ShieldCheckIcon size={16} /> },
+        { label: 'Role', value: String(profile.role || role), icon: <ShieldCheckIcon size={16} /> },
+        ...(profile.email ? [{ label: 'Email', value: String(profile.email), icon: <EnvelopeSimpleIcon size={16} /> }] : []),
+        ...(profile.phone ? [{ label: 'Phone', value: String(profile.phone), icon: <PhoneIcon size={16} /> }] : []),
+        ...(profile.identification ? [{ label: 'Identification No.', value: String(profile.identification), icon: <IdentificationCardIcon size={16} /> }] : []),
+        ...(profile.nationality ? [{ label: 'Nationality', value: String(profile.nationality), icon: <IdentificationCardIcon size={16} /> }] : []),
+        ...(profile.designation ? [{ label: 'Designation', value: String(profile.designation), icon: <ShieldCheckIcon size={16} /> }] : []),
+        ...(profile.joined ? [{ label: 'Joined On', value: new Date(profile.joined).toLocaleDateString(), icon: <CalendarBlankIcon size={16} /> }] : [])
+      ]
     : [];
 
   const inputCls =
@@ -128,23 +212,110 @@ export const ProfilePage: React.FC = () => {
       <header>
         <h1 className="text-2xl font-extrabold tracking-tight text-acc-950 dark:text-acc-50">My Profile</h1>
         <p className="text-sm text-acc-500 dark:text-acc-400 font-mono mt-1">
-          View your account information and manage your password
+          View your account information, edit your name &amp; picture, and manage your password
         </p>
       </header>
 
       {/* Basic Information Card */}
       <section className="rounded-lg border border-acc-200 dark:border-acc-800 bg-white dark:bg-acc-900 shadow-sm overflow-hidden">
         <div className="flex items-center gap-4 p-6 bg-acc-50 dark:bg-acc-850 border-b border-acc-200 dark:border-acc-800">
-          <div className="w-14 h-14 rounded-full bg-brand-500 text-acc-950 flex items-center justify-center text-xl font-extrabold">
-            {(profile?.name || user?.name || '?').charAt(0).toUpperCase()}
+          {/* Profile image with upload overlay */}
+          <div className="relative group w-16 h-16 shrink-0">
+            {profile?.Profile_Image ? (
+              <img
+                src={profile.Profile_Image}
+                alt={displayName}
+                className="w-16 h-16 rounded-full object-cover border-2 border-brand-500"
+              />
+            ) : (
+              <div className="w-16 h-16 rounded-full bg-brand-500 text-acc-950 flex items-center justify-center text-2xl font-extrabold">
+                {initial}
+              </div>
+            )}
+            {uploadingImage ? (
+              <div className="absolute inset-0 rounded-full bg-acc-950/70 flex items-center justify-center">
+                <CircleNotchIcon size={18} className="animate-spin text-brand-500" />
+              </div>
+            ) : (
+              <label
+                className="absolute inset-0 rounded-full bg-acc-950/70 opacity-0 group-hover:opacity-100 cursor-pointer flex flex-col items-center justify-center transition-opacity"
+                title="Change profile image"
+              >
+                <CameraIcon size={18} className="text-white" />
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  className="hidden"
+                  disabled={uploadingImage}
+                />
+              </label>
+            )}
           </div>
-          <div>
-            <h2 className="text-lg font-bold text-acc-950 dark:text-acc-50">{profile?.name || user?.name}</h2>
-            <span className="badge-pill bg-brand-500 text-acc-950 font-mono text-[10px] font-bold">
-              {String(profile?.role || role).toUpperCase()}
-            </span>
+
+          <div className="flex-1 min-w-0">
+            {editingName ? (
+              <form onSubmit={handleSaveName} className="flex flex-col sm:flex-row sm:items-center gap-2">
+                <input
+                  type="text"
+                  value={nameValue}
+                  onChange={(e) => setNameValue(e.target.value)}
+                  placeholder="Enter your full name"
+                  className={inputCls + ' sm:max-w-xs'}
+                  autoFocus
+                />
+                <div className="flex gap-2">
+                  <button
+                    type="submit"
+                    disabled={savingName}
+                    className="px-3 py-2 bg-brand-500 hover:bg-brand-600 disabled:opacity-60 text-acc-950 font-bold text-xs rounded font-mono flex items-center gap-1.5 shadow-sm"
+                  >
+                    {savingName ? <CircleNotchIcon size={13} className="animate-spin" /> : <CheckCircleIcon size={13} />}
+                    Save
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setEditingName(false); setNameFeedback(null); }}
+                    className="px-3 py-2 border border-acc-300 dark:border-acc-700 text-acc-600 dark:text-acc-300 font-semibold text-xs rounded font-mono hover:bg-acc-100 dark:hover:bg-acc-800"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-lg font-bold text-acc-950 dark:text-acc-50 truncate">{displayName}</h2>
+                <button
+                  onClick={() => { setNameValue(displayName); setEditingName(true); setNameFeedback(null); }}
+                  className="p-1.5 rounded text-acc-400 hover:text-brand-500 hover:bg-acc-100 dark:hover:bg-acc-800 transition-colors"
+                  title="Edit name"
+                >
+                  <PencilSimpleIcon size={14} />
+                </button>
+              </div>
+            )}
+            <div className="flex items-center gap-2 mt-1">
+              <span className="badge-pill bg-brand-500 text-acc-950 font-mono text-[10px] font-bold">
+                {String(profile?.role || role).toUpperCase()}
+              </span>
+              <span className="text-[10px] font-mono text-acc-500 dark:text-acc-400 flex items-center gap-1">
+                <CameraIcon size={11} /> hover the photo to change image
+              </span>
+            </div>
           </div>
         </div>
+
+        {nameFeedback && (
+          <div
+            className={`flex items-center gap-2 text-sm rounded-none px-6 py-2.5 ${nameFeedback.type === 'success'
+                ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                : 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+              }`}
+          >
+            {nameFeedback.type === 'success' ? <CheckCircleIcon size={16} /> : <WarningIcon size={16} />}
+            {nameFeedback.msg}
+          </div>
+        )}
 
         <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
           {infoRows.map((row) => (
@@ -219,58 +390,58 @@ export const ProfilePage: React.FC = () => {
               <label className="block text-xs font-mono font-semibold text-acc-600 dark:text-acc-400 mb-1.5">
                 Confirm New Password
               </label>
-                <div className="relative">
-                  <input
-                    type={showConfirm ? 'text' : 'password'}
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="Repeat new password"
-                    className={inputCls}
-                    autoComplete="new-password"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirm(!showConfirm)}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-acc-400 hover:text-acc-600"
-                    tabIndex={-1}
-                  >
-                    {showConfirm ? <EyeSlashIcon size={16} /> : <EyeIcon size={16} />}
-                  </button>
-                </div>
+              <div className="relative">
+                <input
+                  type={showConfirm ? 'text' : 'password'}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Repeat new password"
+                  className={inputCls}
+                  autoComplete="new-password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirm(!showConfirm)}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-acc-400 hover:text-acc-600"
+                  tabIndex={-1}
+                >
+                  {showConfirm ? <EyeSlashIcon size={16} /> : <EyeIcon size={16} />}
+                </button>
               </div>
             </div>
+          </div>
 
-            {feedback && (
-              <div
-                className={`flex items-center gap-2 text-sm rounded px-3 py-2 ${feedback.type === 'success'
-                    ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-                    : 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400'
-                  }`}
-              >
-                {feedback.type === 'success' ? <CheckCircleIcon size={16} /> : <WarningIcon size={16} />}
-                {feedback.msg}
-              </div>
-            )}
-
-            <div className="flex justify-end">
-              <button
-                type="submit"
-                disabled={changing}
-                className="px-4 py-2 bg-brand-500 hover:bg-brand-600 disabled:opacity-60 disabled:cursor-not-allowed text-acc-950 font-bold text-xs rounded font-mono flex items-center gap-2 shadow-sm transition-colors"
-              >
-                {changing ? (
-                  <>
-                    <CircleNotchIcon size={14} className="animate-spin" />
-                    Updating...
-                  </>
-                ) : (
-                  <>
-                    <LockKeyIcon size={14} />
-                    Update Password
-                  </>
-                )}
-              </button>
+          {pwFeedback && (
+            <div
+              className={`flex items-center gap-2 text-sm rounded px-3 py-2 ${pwFeedback.type === 'success'
+                  ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                  : 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+                }`}
+            >
+              {pwFeedback.type === 'success' ? <CheckCircleIcon size={16} /> : <WarningIcon size={16} />}
+              {pwFeedback.msg}
             </div>
+          )}
+
+          <div className="flex justify-end">
+            <button
+              type="submit"
+              disabled={changing}
+              className="px-4 py-2 bg-brand-500 hover:bg-brand-600 disabled:opacity-60 disabled:cursor-not-allowed text-acc-950 font-bold text-xs rounded font-mono flex items-center gap-2 shadow-sm transition-colors"
+            >
+              {changing ? (
+                <>
+                  <CircleNotchIcon size={14} className="animate-spin" />
+                  Updating...
+                </>
+              ) : (
+                <>
+                  <LockKeyIcon size={14} />
+                  Update Password
+                </>
+              )}
+            </button>
+          </div>
         </form>
       </section>
     </div>

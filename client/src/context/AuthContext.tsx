@@ -48,7 +48,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (err: any) {
       const msg = err.response?.data?.error || (err.code === 'ERR_NETWORK' || !err.response 
         ? 'Cannot connect to backend server (port 5000). Please make sure to run "npm run dev" from the project ROOT folder.'
-        : 'Login failed. Please check credentials.');
+        : 'Login failed. Please check credentials. Default admin accounts: admin / admin123 or admin2 / 54321');
       throw new Error(msg);
     }
   };
