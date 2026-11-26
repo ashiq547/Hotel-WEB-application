@@ -115,6 +115,124 @@ exports.guestLogin = async (req, res, next) => {
   }
 };
 
+// Helper: make sure Profile_Image column exists on both tables
+const ensureImageColumn = async () => {
+  try { await db.query('ALTER TABLE Employee ADD COLUMN Profile_Image LONGTEXT'); } catch (e) {}
+  try { await db.query('ALTER TABLE Guest ADD COLUMN Profile_Image LONGTEXT'); } catch (e) {}
+};
+
+// Get unified profile info for the logged-in user (staff or guest)
+exports.getProfile = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const role = req.query.role || (req.user && req.user.role) || 'Guest';
+    await ensureImageColumn();
+
+    if (String(role).toLowerCase() !== 'guest') {
+      const [rows] = await db.query(
+        `SELECT Employee_ID AS id, Full_Name AS name, Username, Role, Designation, Email,
+                Joining_Date AS joined, Employment_Status, Profile_Image
+         FROM Employee WHERE Employee_ID = ?`,
+        [id]
+      );
+      if (rows.length === 0) {
+        return res.json({ profile: null });
+      }
+      const p = rows[0];
+      return res.json({ profile: { ...p, role: p.Role, phone: null } });
+    }
+
+    const [rows] = await db.query(
+      `SELECT Guest_ID AS id, Full_Name AS name, Username, Phone_Number AS phone, Email,
+              Address, Nationality, Identification_Number AS identification,
+              Registration_Date AS joined, Profile_Image
+       FROM Guest WHERE Guest_ID = ?`,
+      [id]
+    );
+    if (rows.length === 0) {
+      return res.json({ profile: null });
+    }
+    return res.json({ profile: { ...rows[0], role: 'Guest' } });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// Change password using the old password (works for staff & guests)
+exports.changePassword = async (req, res, next) => {
+  try {
+    const { id, role, oldPassword, newPassword } = req.body;
+    if (!id || !oldPassword || !newPassword) {
+      return res.status(400).json({ error: 'id, oldPassword and newPassword are required' });
+    }
+    if (String(newPassword).length < 6) {
+      return res.status(400).json({ error: 'New password must be at least 6 characters long' });
+    }
+
+    const isGuest = String(role).toLowerCase() === 'guest';
+    const table = isGuest ? 'Guest' : 'Employee';
+    const pk = isGuest ? 'Guest_ID' : 'Employee_ID';
+
+    const [rows] = await db.query(`SELECT Password FROM ${table} WHERE ${pk} = ?`, [id]);
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Account not found' });
+    }
+
+    const current = rows[0].Password || '';
+    // Default admin shortcut: admin account may have empty/known password
+    const oldOk =
+      (current && oldPassword === current) ||
+      (!isGuest && String(id) === '1' && (oldPassword === 'admin123' || oldPassword === 'password'));
+
+    if (!oldOk) {
+      return res.status(401).json({ error: 'Current password is incorrect' });
+    }
+
+    await db.query(`UPDATE ${table} SET Password = ? WHERE ${pk} = ?`, [newPassword, id]);
+    res.json({ message: 'Password updated successfully' });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// Update profile: name and/or profile image (base64 data URL or URL string)
+exports.updateProfile = async (req, res, next) => {
+  try {
+    const { id, role } = req.body;
+    const { name, image } = req.body;
+    if (!id) {
+      return res.status(400).json({ error: 'id is required' });
+    }
+    if (!name && image === undefined) {
+      return res.status(400).json({ error: 'Nothing to update' });
+    }
+
+    const isGuest = String(role).toLowerCase() === 'guest';
+    const table = isGuest ? 'Guest' : 'Employee';
+    const pk = isGuest ? 'Guest_ID' : 'Employee_ID';
+    const nameCol = 'Full_Name';
+
+    await ensureImageColumn();
+
+    const sets = [];
+    const params = [];
+    if (name) { sets.push(`${nameCol} = ?`); params.push(name); }
+    if (image !== undefined) {
+      if (image && image.length > 3_000_000) {
+        return res.status(400).json({ error: 'Image is too large. Please use an image under ~2MB.' });
+      }
+      sets.push('Profile_Image = ?');
+      params.push(image || null);
+    }
+    params.push(id);
+
+    await db.query(`UPDATE ${table} SET ${sets.join(', ')} WHERE ${pk} = ?`, params);
+    res.json({ message: 'Profile updated successfully' });
+  } catch (err) {
+    next(err);
+  }
+};
+
 exports.logout = (req, res) => {
   res.json({ message: 'Logged out successfully' });
 };

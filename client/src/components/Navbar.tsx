@@ -9,7 +9,8 @@ import {
   Bed,
   SquaresFour,
   UserCheck,
-  LockKey
+  LockKey,
+  UserCircleIcon
 } from '@phosphor-icons/react';
 
 export const Navbar: React.FC = () => {
@@ -125,6 +126,13 @@ export const Navbar: React.FC = () => {
                 <p className="text-xs font-bold">{user.name}</p>
                 <p className={`text-[10px] font-mono ${isStaff ? 'text-acc-400' : 'text-acc-500'}`}>{user.username}</p>
               </div>
+              <Link
+                to="/profile"
+                className={`p-2 rounded transition-colors ${isStaff ? 'text-acc-300 hover:bg-acc-850' : 'text-acc-600 dark:text-acc-300 hover:bg-acc-100 dark:hover:bg-acc-800'}`}
+                title="My Profile"
+              >
+                <UserCircleIcon size={22} />
+              </Link>
               <button
                 onClick={logout}
                 className="p-2 text-acc-400 hover:text-red-400 rounded transition-colors"
