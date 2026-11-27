@@ -34,3 +34,9 @@ Thumbs.db
 
 # Backup files
 *.bkp
+
+# Python backend
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/

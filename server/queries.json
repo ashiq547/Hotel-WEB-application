@@ -1,0 +1,101 @@
+{
+  "getAllBills": [
+    "\n      SELECT b.*, (b.Total_Amount + b.Taxes - b.Discounts) as Final_Amount,\n             r.Check_In_Date, r.Check_Out_Date, r.Guest_ID,\n             g.Full_Name, g.Email, g.Phone_Number,\n             rm.Room_Number, rm.Room_Type, h.Hotel_Name\n      FROM Bill b\n      JOIN Reservation r ON b.Reservation_ID = r.Reservation_ID\n      JOIN Guest g ON r.Guest_ID = g.Guest_ID\n      JOIN Room rm ON r.Room_ID = rm.Room_ID\n      JOIN Hotel h ON rm.Hotel_ID = h.Hotel_ID\n      WHERE 1=1\n    "
+  ],
+  "getBillById": [
+    "\n      SELECT b.*, (b.Total_Amount + b.Taxes - b.Discounts) as Final_Amount,\n             r.Check_In_Date, r.Check_Out_Date, r.Guest_ID, r.Booking_Date,\n             g.Full_Name, g.Email, g.Phone_Number, g.Address, g.Identification_Number,\n             rm.Room_Number, rm.Room_Type, rm.Nightly_Rate, h.Hotel_Name, h.City, h.Contact_Number as Hotel_Contact,\n             DATEDIFF(r.Check_Out_Date, r.Check_In_Date) as Total_Nights\n      FROM Bill b\n      JOIN Reservation r ON b.Reservation_ID = r.Reservation_ID\n      JOIN Guest g ON r.Guest_ID = g.Guest_ID\n      JOIN Room rm ON r.Room_ID = rm.Room_ID\n      JOIN Hotel h ON rm.Hotel_ID = h.Hotel_ID\n      WHERE b.Bill_ID = ?\n    ",
+    "\n      SELECT sr.*, s.Service_Type, COALESCE(s.Service_Name, s.Service_Type) as Service_Name, sr.Service_Date\n      FROM Service_Record sr\n      JOIN Service s ON sr.Service_ID = s.Service_ID\n      WHERE sr.Bill_ID = ?\n      ORDER BY sr.Service_Record_ID ASC\n    "
+  ],
+  "generateBill": [
+    "\n      SELECT r.*, rm.Nightly_Rate, DATEDIFF(r.Check_Out_Date, r.Check_In_Date) as Total_Nights\n      FROM Reservation r\n      JOIN Room rm ON r.Room_ID = rm.Room_ID\n      WHERE r.Reservation_ID = ?\n    ",
+    "\n      SELECT sr.*, s.Service_Type\n      FROM Service_Record sr\n      JOIN Service s ON sr.Service_ID = s.Service_ID\n      WHERE sr.Guest_ID = ?\n    ",
+    "SELECT * FROM Bill WHERE Reservation_ID = ?",
+    "UPDATE Bill SET\n          Total_Amount = ?,\n          Taxes = ?,\n          Discounts = ?,\n          Payment_Method = ?,\n          Payment_Status = 'Paid'\n         WHERE Bill_ID = ?",
+    "INSERT INTO Bill (Reservation_ID, Total_Amount, Taxes, Discounts, Payment_Method, Payment_Status)\n         VALUES (?, ?, ?, ?, ?, 'Paid')",
+    "UPDATE Service_Record SET Bill_ID = ? WHERE Guest_ID = ? AND (Bill_ID IS NULL OR Bill_ID = 0)",
+    "UPDATE Reservation SET Reservation_Status = 'Checked Out' WHERE Reservation_ID = ?",
+    "UPDATE Room SET Availability_Status = 'Available' WHERE Room_ID = ?",
+    "\n      SELECT b.*, (b.Total_Amount + b.Taxes - b.Discounts) as Final_Amount,\n             r.Check_In_Date, r.Check_Out_Date, g.Full_Name, rm.Room_Number, h.Hotel_Name\n      FROM Bill b\n      JOIN Reservation r ON b.Reservation_ID = r.Reservation_ID\n      JOIN Guest g ON r.Guest_ID = g.Guest_ID\n      JOIN Room rm ON r.Room_ID = rm.Room_ID\n      JOIN Hotel h ON rm.Hotel_ID = h.Hotel_ID\n      WHERE b.Bill_ID = ?\n    "
+  ],
+  "getDashboardStats": [
+    "SELECT COUNT(*) as count FROM Hotel",
+    "SELECT COUNT(*) as count FROM Room",
+    "SELECT COUNT(*) as count FROM Room WHERE Availability_Status = 'Available'",
+    "SELECT COUNT(*) as count FROM Room WHERE Availability_Status = 'Occupied'",
+    "SELECT COUNT(*) as count FROM Reservation WHERE Reservation_Status IN ('Confirmed', 'Checked In')",
+    "SELECT COUNT(DISTINCT Guest_ID) as count FROM Reservation WHERE CURRENT_DATE BETWEEN Check_In_Date AND Check_Out_Date",
+    "SELECT COALESCE(SUM(Total_Amount + Taxes - Discounts), 0) as total FROM Bill WHERE Payment_Status = 'Paid'",
+    "SELECT COALESCE(SUM(Total_Amount + Taxes - Discounts), 0) as total FROM Bill WHERE Payment_Status = 'Paid'",
+    "\n      SELECT DATE_FORMAT(r.Check_Out_Date, '%Y-%m') as Month,\n             SUM(b.Total_Amount + b.Taxes - b.Discounts) as Revenue\n      FROM Bill b\n      JOIN Reservation r ON b.Reservation_ID = r.Reservation_ID\n      WHERE b.Payment_Status = 'Paid'\n      GROUP BY DATE_FORMAT(r.Check_Out_Date, '%Y-%m')\n      ORDER BY Month ASC\n      LIMIT 12\n    ",
+    "\n      SELECT Room_Type, COUNT(*) as Count, SUM(CASE WHEN Availability_Status = 'Occupied' THEN 1 ELSE 0 END) as Occupied\n      FROM Room\n      GROUP BY Room_Type\n    "
+  ],
+  "getHighestSpendingGuests": [
+    "\n      SELECT g.Guest_ID, g.Full_Name, g.Email, g.Phone_Number, g.Nationality,\n             COUNT(DISTINCT r.Reservation_ID) as Total_Bookings,\n             COALESCE(SUM(b.Total_Amount + b.Taxes - b.Discounts), 0) as Total_Spent\n      FROM Guest g\n      LEFT JOIN Reservation r ON g.Guest_ID = r.Guest_ID\n      LEFT JOIN Bill b ON r.Reservation_ID = b.Reservation_ID AND b.Payment_Status = 'Paid'\n      GROUP BY g.Guest_ID\n      ORDER BY Total_Spent DESC\n      LIMIT 10\n    "
+  ],
+  "getUpcomingCheckins": [
+    "\n      SELECT r.*, g.Full_Name, g.Phone_Number, rm.Room_Number, rm.Room_Type, h.Hotel_Name\n      FROM Reservation r\n      JOIN Guest g ON r.Guest_ID = g.Guest_ID\n      JOIN Room rm ON r.Room_ID = rm.Room_ID\n      JOIN Hotel h ON rm.Hotel_ID = h.Hotel_ID\n      WHERE r.Reservation_Status = 'Confirmed'\n        AND r.Check_In_Date >= CURRENT_DATE\n      ORDER BY r.Check_In_Date ASC\n    "
+  ],
+  "getEmployeeSalaryReport": [
+    "\n      SELECT h.Hotel_Name, h.City,\n             COUNT(e.Employee_ID) as Total_Employees,\n             SUM(e.Salary) as Total_Salary_Expense,\n             AVG(e.Salary) as Average_Salary,\n             MIN(e.Salary) as Min_Salary,\n             MAX(e.Salary) as Max_Salary\n      FROM Hotel h\n      LEFT JOIN Employee e ON h.Hotel_ID = e.Hotel_ID\n      GROUP BY h.Hotel_ID\n    "
+  ],
+  "getOccupancyReport": [
+    "\n      SELECT h.Hotel_ID, h.Hotel_Name, h.City,\n             COUNT(r.Room_ID) as Total_Rooms,\n             SUM(CASE WHEN r.Availability_Status = 'Occupied' THEN 1 ELSE 0 END) as Occupied_Rooms,\n             SUM(CASE WHEN r.Availability_Status = 'Reserved' THEN 1 ELSE 0 END) as Reserved_Rooms,\n             SUM(CASE WHEN r.Availability_Status = 'Available' THEN 1 ELSE 0 END) as Available_Rooms,\n             SUM(CASE WHEN r.Availability_Status = 'Maintenance' THEN 1 ELSE 0 END) as Maintenance_Rooms,\n             ROUND((SUM(CASE WHEN r.Availability_Status = 'Occupied' THEN 1 ELSE 0 END) / COUNT(r.Room_ID)) * 100, 1) as Occupancy_Percentage\n      FROM Hotel h\n      LEFT JOIN Room r ON h.Hotel_ID = r.Hotel_ID\n      GROUP BY h.Hotel_ID\n    "
+  ],
+  "getAllHotels": [
+    "\n      SELECT h.*, \n             COUNT(DISTINCT r.Room_ID) as Total_Rooms,\n             COUNT(DISTINCT e.Employee_ID) as Total_Employees\n      FROM Hotel h\n      LEFT JOIN Room r ON h.Hotel_ID = r.Hotel_ID\n      LEFT JOIN Employee e ON h.Hotel_ID = e.Hotel_ID\n      GROUP BY h.Hotel_ID\n      ORDER BY h.Hotel_ID ASC\n    "
+  ],
+  "deleteHotel": [
+    "SELECT Hotel_Name FROM Hotel WHERE Hotel_ID = ?",
+    "SELECT\n         (SELECT COUNT(*) FROM Employee WHERE Hotel_ID = ?) AS employees,\n         (SELECT COUNT(*) FROM Reservation res JOIN Room r ON res.Room_ID = r.Room_ID WHERE r.Hotel_ID = ?) AS reservations",
+    "DELETE FROM Room WHERE Hotel_ID = ?",
+    "DELETE FROM Hotel WHERE Hotel_ID = ?"
+  ],
+  "getAllEmployees": [
+    "\n      SELECT e.Employee_ID, e.Hotel_ID, e.Full_Name, e.Role, e.Designation, e.Salary, e.Joining_Date, e.Employment_Status,\n             e.Phone_Number, e.Email, e.Username,\n             h.Hotel_Name\n      FROM Employee e\n      JOIN Hotel h ON e.Hotel_ID = h.Hotel_ID\n      ORDER BY e.Employee_ID DESC\n    "
+  ],
+  "getEmployeeById": [
+    "\n      SELECT e.Employee_ID, e.Hotel_ID, e.Full_Name, e.Role, e.Designation, e.Salary, e.Joining_Date, e.Employment_Status,\n             e.Phone_Number, e.Email, e.Username,\n             h.Hotel_Name\n      FROM Employee e\n      JOIN Hotel h ON e.Hotel_ID = h.Hotel_ID\n      WHERE e.Employee_ID = ?\n    "
+  ],
+  "getAllRooms": [
+    "\n      SELECT r.*, h.Hotel_Name, h.City\n      FROM Room r\n      JOIN Hotel h ON r.Hotel_ID = h.Hotel_ID\n      WHERE 1=1\n    "
+  ],
+  "getAvailableRooms": [
+    "\n      SELECT r.*, h.Hotel_Name \n      FROM Available_Rooms r\n      JOIN Hotel h ON r.Hotel_ID = h.Hotel_ID\n      ORDER BY r.Room_Number ASC\n    "
+  ],
+  "getAllServices": [
+    "SELECT * FROM Service ORDER BY Service_ID ASC"
+  ],
+  "getGuestServiceRecords": [
+    "\n      SELECT sr.*, s.Service_Type, COALESCE(s.Service_Name, s.Service_Type) as Service_Name, g.Full_Name\n      FROM Service_Record sr\n      JOIN Service s ON sr.Service_ID = s.Service_ID\n      JOIN Guest g ON sr.Guest_ID = g.Guest_ID\n    "
+  ],
+  "assignServiceToGuest": [
+    "SELECT Guest_ID FROM Guest WHERE Guest_ID = ?",
+    "SELECT Service_Type, Service_Charge FROM Service WHERE Service_ID = ?",
+    "SELECT Bill_ID FROM Bill WHERE Reservation_ID = ?",
+    "INSERT INTO Bill (Reservation_ID, Total_Amount, Payment_Status) VALUES (?, ?, ?)",
+    "INSERT INTO Service_Record (Guest_ID, Service_ID, Bill_ID, Service_Date, Quantity, Charge)\n       VALUES (?, ?, ?, ?, ?, ?)",
+    "UPDATE Bill SET Total_Amount = Total_Amount + ? WHERE Bill_ID = ?",
+    "\n      SELECT sr.*, s.Service_Type, COALESCE(s.Service_Name, s.Service_Type) as Service_Name, g.Full_Name\n      FROM Service_Record sr\n      JOIN Service s ON sr.Service_ID = s.Service_ID\n      JOIN Guest g ON sr.Guest_ID = g.Guest_ID\n      WHERE sr.Service_Record_ID = ?\n    "
+  ],
+  "getAllReservations": [
+    "\n      SELECT r.*, \n             g.Full_Name, g.Phone_Number, g.Email,\n             rm.Room_Number, rm.Room_Type, rm.Nightly_Rate,\n             h.Hotel_Name, h.Hotel_ID,\n             DATEDIFF(r.Check_Out_Date, r.Check_In_Date) as Total_Nights,\n             (DATEDIFF(r.Check_Out_Date, r.Check_In_Date) * rm.Nightly_Rate) as Room_Charge,\n             b.Bill_ID, b.Payment_Status, (b.Total_Amount + b.Taxes - b.Discounts) as Final_Amount\n      FROM Reservation r\n      JOIN Guest g ON r.Guest_ID = g.Guest_ID\n      JOIN Room rm ON r.Room_ID = rm.Room_ID\n      JOIN Hotel h ON rm.Hotel_ID = h.Hotel_ID\n      LEFT JOIN Bill b ON r.Reservation_ID = b.Reservation_ID\n      WHERE 1=1\n    "
+  ],
+  "getReservationById": [
+    "\n      SELECT r.*, \n             g.Full_Name, g.Phone_Number, g.Email, g.Identification_Number,\n             rm.Room_Number, rm.Room_Type, rm.Nightly_Rate,\n             h.Hotel_Name, h.City,\n             DATEDIFF(r.Check_Out_Date, r.Check_In_Date) as Total_Nights,\n             (DATEDIFF(r.Check_Out_Date, r.Check_In_Date) * rm.Nightly_Rate) as Room_Charge,\n             b.Bill_ID, b.Payment_Status, (b.Total_Amount + b.Taxes - b.Discounts) as Final_Amount\n      FROM Reservation r\n      JOIN Guest g ON r.Guest_ID = g.Guest_ID\n      JOIN Room rm ON r.Room_ID = rm.Room_ID\n      JOIN Hotel h ON rm.Hotel_ID = h.Hotel_ID\n      LEFT JOIN Bill b ON r.Reservation_ID = b.Reservation_ID\n      WHERE r.Reservation_ID = ?\n    "
+  ],
+  "getAllGuests": [
+    "\n      SELECT g.Guest_ID, g.Full_Name, g.Phone_Number, g.Email, g.Address, g.Nationality,\n             g.Identification_Number, g.Username,\n             (SELECT COUNT(*) FROM Reservation r WHERE r.Guest_ID = g.Guest_ID) as Total_Reservations\n      FROM Guest g\n      ORDER BY g.Guest_ID DESC\n    "
+  ],
+  "getGuestById": [
+    "\n      SELECT g.Guest_ID, g.Full_Name, g.Phone_Number, g.Email, g.Address, g.Nationality,\n             g.Identification_Number, g.Username\n      FROM Guest g\n      WHERE g.Guest_ID = ?\n    "
+  ],
+  "getGuestProfile": [
+    "\n      SELECT g.Guest_ID, g.Full_Name, g.Phone_Number, g.Email, g.Address, g.Nationality,\n             g.Identification_Number, g.Username\n      FROM Guest g\n      WHERE g.Guest_ID = ?\n    ",
+    "\n      SELECT r.*, rm.Room_Number, rm.Room_Type, rm.Nightly_Rate, h.Hotel_Name, h.City,\n             DATEDIFF(r.Check_Out_Date, r.Check_In_Date) as Total_Nights,\n             (DATEDIFF(r.Check_Out_Date, r.Check_In_Date) * rm.Nightly_Rate) as Room_Charge,\n             b.Bill_ID, b.Payment_Status, (b.Total_Amount + b.Taxes - b.Discounts) as Final_Amount\n      FROM Reservation r\n      JOIN Room rm ON r.Room_ID = rm.Room_ID\n      JOIN Hotel h ON rm.Hotel_ID = h.Hotel_ID\n      LEFT JOIN Bill b ON r.Reservation_ID = b.Reservation_ID\n      WHERE r.Guest_ID = ?\n      ORDER BY r.Reservation_ID DESC\n    ",
+    "\n      SELECT sr.*, s.Service_Type, s.Service_Name, s.Service_Description\n      FROM Service_Record sr\n      JOIN Service s ON sr.Service_ID = s.Service_ID\n      WHERE sr.Guest_ID = ?\n      ORDER BY sr.Service_Record_ID DESC\n    ",
+    "\n      SELECT b.*, (b.Total_Amount + b.Taxes - b.Discounts) as Final_Amount,\n             r.Check_In_Date, r.Check_Out_Date, rm.Room_Number, h.Hotel_Name\n      FROM Bill b\n      JOIN Reservation r ON b.Reservation_ID = r.Reservation_ID\n      JOIN Room rm ON r.Room_ID = rm.Room_ID\n      JOIN Hotel h ON rm.Hotel_ID = h.Hotel_ID\n      WHERE r.Guest_ID = ?\n      ORDER BY b.Bill_ID DESC\n    "
+  ],
+  "searchGuests": [
+    "\n      SELECT g.Guest_ID, g.Full_Name, g.Phone_Number, g.Email, g.Address, g.Nationality,\n             g.Identification_Number, g.Username\n      FROM Guest g\n      WHERE CAST(g.Guest_ID AS CHAR) LIKE ?\n         OR g.Full_Name LIKE ?\n         OR g.Username LIKE ?\n         OR g.Phone_Number LIKE ?\n         OR g.Email LIKE ?\n         OR g.Identification_Number LIKE ?\n      ORDER BY g.Guest_ID DESC\n    "
+  ]
+}

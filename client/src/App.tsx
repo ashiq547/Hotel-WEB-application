@@ -16,11 +16,26 @@ import { ReportsPage } from './pages/ReportsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { GuestDashboardPage } from './pages/GuestDashboardPage';
 import { ProfilePage } from './pages/ProfilePage';
+import { UserManagementPage } from './pages/UserManagementPage';
 
-const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { token, loading } = useAuth();
-  if (loading) return null;
+/**
+ * Route guards mirror the server RBAC rules. The server is authoritative;
+ * these guards just avoid sending users to pages they cannot use.
+ */
+const ProtectedRoute: React.FC<{ children: React.ReactNode; roles?: string[] }> = ({ children, roles }) => {
+  const { token, user, loading } = useAuth();
+  if (loading) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="font-mono text-xs text-acc-500 animate-pulse">Restoring session…</div>
+      </div>
+    );
+  }
   if (!token) return <Navigate to="/guest-login" replace />;
+  if (roles && (!user || !roles.includes(user.role))) {
+    // Server would 403 — send the user somewhere they belong instead.
+    return <Navigate to={user?.role === 'Guest' ? '/guest-dashboard' : '/dashboard'} replace />;
+  }
   return <>{children}</>;
 };
 
@@ -47,16 +62,19 @@ export const App: React.FC = () => {
             <Route path="login" element={<LoginPage />} />
             <Route path="hotels" element={<HotelsPage />} />
             <Route path="rooms" element={<RoomsPage />} />
-            <Route path="guest-dashboard" element={<ProtectedRoute><GuestDashboardPage /></ProtectedRoute>} />
+            <Route path="guest-dashboard" element={<ProtectedRoute roles={['Guest']}><GuestDashboardPage /></ProtectedRoute>} />
 
-            {/* Protected Management & Admin Operations */}
-            <Route path="dashboard" element={<ProtectedRoute><StaffDashboardGuard><DashboardPage /></StaffDashboardGuard></ProtectedRoute>} />
-            <Route path="services" element={<ProtectedRoute><ServicesPage /></ProtectedRoute>} />
-            <Route path="billing" element={<ProtectedRoute><BillingPage /></ProtectedRoute>} />
-            <Route path="employees" element={<ProtectedRoute><EmployeesPage /></ProtectedRoute>} />
-            <Route path="reports" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} />
-            <Route path="settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+            {/* Protected Management & Admin Operations — role lists match the server */}
+            <Route path="dashboard" element={<ProtectedRoute roles={['Admin', 'Manager', 'Receptionist']}><DashboardPage /></ProtectedRoute>} />
+            <Route path="services" element={<ProtectedRoute roles={['Admin', 'Manager', 'Receptionist']}><ServicesPage /></ProtectedRoute>} />
+            <Route path="billing" element={<ProtectedRoute roles={['Admin', 'Manager', 'Receptionist']}><BillingPage /></ProtectedRoute>} />
+            <Route path="employees" element={<ProtectedRoute roles={['Admin', 'Manager']}><EmployeesPage /></ProtectedRoute>} />
+            <Route path="reports" element={<ProtectedRoute roles={['Admin', 'Manager', 'Receptionist']}><ReportsPage /></ProtectedRoute>} />
+            <Route path="settings" element={<ProtectedRoute roles={['Admin', 'Manager']}><SettingsPage /></ProtectedRoute>} />
             <Route path="profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+
+            {/* Admin-only: server enforces user:read:all etc. */}
+            <Route path="users" element={<ProtectedRoute roles={['Admin']}><UserManagementPage /></ProtectedRoute>} />
           </Route>
 
           {/* Catch-all fallback always redirects to Home Page */}

@@ -12,7 +12,7 @@
 This document describes the functional and non-functional requirements of the Hotel Web Application. It is for developers, testers and evaluators.
 
 ### 1.2 Scope
-The system is a web application where guests browse and book hotel rooms and admins manage rooms and bookings. It has a React frontend and a Node.js/Express REST API backend.
+The system is a web application where guests browse and book hotel rooms and admins manage rooms and bookings. It has a React frontend and a Python/FastAPI REST API backend.
 
 ### 1.3 Definitions
 
@@ -43,12 +43,12 @@ A standalone web application with a frontend client and a backend REST API conne
 
 ### 2.3 Operating Environment
 - Modern web browser (Chrome, Firefox, Edge)
-- Node.js server
+- Python/FastAPI server
 - MVP runs locally; Beta is deployed online
 
 ### 2.4 Constraints
 - Frontend: React 18, TypeScript, Vite, Tailwind CSS, Phosphor Icons, Axios
-- Backend: Node.js, Express.js, JWT, Dotenv
+- Backend: Python, FastAPI, Uvicorn, JWT, python-dotenv
 
 ### 2.5 Assumptions
 - One hotel only.

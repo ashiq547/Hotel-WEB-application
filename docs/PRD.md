@@ -75,7 +75,7 @@ Small hotels often handle room availability and bookings by phone or on paper. T
 
 ## 10. Assumptions and Constraints
 - Single hotel, small number of rooms.
-- Tech stack: React 18, TypeScript, Vite, Tailwind CSS, Phosphor Icons, Axios, Node.js, Express.js, JWT, Dotenv.
+- Tech stack: React 18, TypeScript, Vite, Tailwind CSS, Phosphor Icons, Axios, Python, FastAPI, Uvicorn, JWT, python-dotenv.
 - Payment is out of scope; booking is a reservation only.
 - Scope is kept small so the project can be completed and secured.
 

@@ -4,10 +4,12 @@
   "description": "Hotel.com - Full Stack Hotel Management System",
   "scripts": {
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
-    "dev:server": "npm --prefix server start",
+    "dev:server": "python3 server/run.py --reload",
     "dev:client": "npm --prefix client run dev",
-    "db:init": "npm --prefix server run db:init",
-    "build": "npm --prefix client run build"
+    "db:init": "python3 server/run.py --init-db",
+    "build": "npm --prefix client run build",
+    "start:server": "python3 server/run.py",
+    "test:server": "python3 server/run.py --test"
   },
   "devDependencies": {
     "concurrently": "^10.0.4"

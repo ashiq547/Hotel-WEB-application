@@ -16,7 +16,9 @@ import {
   EyeIcon,
   PencilSimpleIcon,
   CameraIcon,
-  HouseIcon
+  HouseIcon,
+  DesktopIcon,
+  TrashIcon
 } from '@phosphor-icons/react';
 
 export const ProfilePage: React.FC = () => {
@@ -106,10 +108,14 @@ export const ProfilePage: React.FC = () => {
         oldPassword,
         newPassword
       });
-      setPwFeedback({ type: 'success', msg: res.data.message || 'Password updated successfully.' });
+      // Server revokes all sessions after a password change — force re-login.
+      setPwFeedback({ type: 'success', msg: res.data.message || 'Password updated. Please log in again.' });
       setOldPassword('');
       setNewPassword('');
       setConfirmPassword('');
+      setTimeout(() => {
+        window.location.href = role === 'Guest' ? '/guest-login' : '/login';
+      }, 1500);
     } catch (err: any) {
       setPwFeedback({
         type: 'error',
@@ -176,6 +182,49 @@ export const ProfilePage: React.FC = () => {
       });
     } finally {
       setUploadingImage(false);
+    }
+  };
+
+  // Sessions state
+  const [sessions, setSessions] = useState<any[]>([]);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
+  const [sessionsFeedback, setSessionsFeedback] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
+
+  const loadSessions = async () => {
+    setSessionsLoading(true);
+    try {
+      const res = await api.get('/auth/sessions');
+      setSessions(res.data.sessions || []);
+    } catch {
+      setSessions([]);
+    } finally {
+      setSessionsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (user?.id && token) loadSessions();
+  }, [user?.id, token]);
+
+  const handleRevokeSession = async (id: number) => {
+    setSessionsFeedback(null);
+    try {
+      await api.delete(`/auth/sessions/${id}`);
+      setSessionsFeedback({ type: 'success', msg: 'Session revoked.' });
+      loadSessions();
+    } catch (err: any) {
+      setSessionsFeedback({ type: 'error', msg: err.response?.data?.error || 'Failed to revoke session.' });
+    }
+  };
+
+  const handleRevokeAllSessions = async () => {
+    setSessionsFeedback(null);
+    try {
+      await api.post('/auth/sessions/revoke-all');
+      setSessionsFeedback({ type: 'success', msg: 'All sessions revoked. Please log in again.' });
+      setTimeout(() => { window.location.href = '/guest-login'; }, 1200);
+    } catch (err: any) {
+      setSessionsFeedback({ type: 'error', msg: err.response?.data?.error || 'Failed to revoke sessions.' });
     }
   };
 
@@ -443,6 +492,74 @@ export const ProfilePage: React.FC = () => {
             </button>
           </div>
         </form>
+      </section>
+
+      {/* Active Sessions Card */}
+      <section className="rounded-lg border border-acc-200 dark:border-acc-800 bg-white dark:bg-acc-900 shadow-sm">
+        <div className="flex items-center justify-between p-4 border-b border-acc-200 dark:border-acc-800">
+          <div className="flex items-center gap-2">
+            <DesktopIcon size={18} className="text-brand-500" />
+            <h2 className="text-sm font-bold text-acc-950 dark:text-acc-50">Active Sessions</h2>
+          </div>
+          <button
+            onClick={handleRevokeAllSessions}
+            className="px-3 py-1.5 border border-red-300 dark:border-red-800 text-red-600 dark:text-red-400 font-semibold text-[11px] rounded font-mono hover:bg-red-50 dark:hover:bg-red-900/20"
+          >
+            Log out everywhere
+          </button>
+        </div>
+
+        {sessionsFeedback && (
+          <div className={`flex items-center gap-2 text-sm rounded-none px-6 py-2.5 ${sessionsFeedback.type === 'success'
+              ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+              : 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+            }`}>
+            {sessionsFeedback.type === 'success' ? <CheckCircleIcon size={16} /> : <WarningIcon size={16} />}
+            {sessionsFeedback.msg}
+          </div>
+        )}
+
+        <div className="p-4 space-y-2">
+          {sessionsLoading ? (
+            <div className="flex items-center justify-center gap-2 py-4 text-acc-500 font-mono text-xs">
+              <CircleNotchIcon size={16} className="animate-spin" /> Loading sessions...
+            </div>
+          ) : sessions.length === 0 ? (
+            <p className="text-center py-4 text-acc-500 font-mono text-xs">No active sessions found.</p>
+          ) : (
+            sessions.map((s) => (
+              <div
+                key={s.id}
+                className={`flex items-center justify-between gap-3 p-3 rounded border ${s.current
+                  ? 'border-brand-400 dark:border-brand-600 bg-brand-50/50 dark:bg-brand-900/10'
+                  : 'border-acc-200 dark:border-acc-800'}`}
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-semibold text-acc-950 dark:text-acc-50 truncate max-w-[300px]" title={s.device || ''}>
+                      {s.device ? String(s.device).slice(0, 60) : 'Unknown device'}
+                    </span>
+                    {s.current && (
+                      <span className="badge-pill bg-brand-500 text-acc-950 font-mono text-[9px] font-bold">THIS DEVICE</span>
+                    )}
+                  </div>
+                  <p className="text-[10px] font-mono text-acc-500 dark:text-acc-400 mt-0.5">
+                    IP {s.ip || '—'} · last used {s.lastUsed ? new Date(s.lastUsed).toLocaleString() : '—'}
+                    {' '}· expires {s.expires ? new Date(s.expires).toLocaleDateString() : '—'}
+                  </p>
+                </div>
+                <button
+                  onClick={() => handleRevokeSession(s.id)}
+                  disabled={s.current}
+                  title={s.current ? 'Use the logout button to end this session' : 'Revoke this session'}
+                  className="shrink-0 p-2 rounded text-acc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  <TrashIcon size={15} />
+                </button>
+              </div>
+            ))
+          )}
+        </div>
       </section>
     </div>
   );

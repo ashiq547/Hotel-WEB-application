@@ -1,0 +1,43 @@
+[
+  {
+    "sql": "INSERT INTO Hotel (Hotel_ID, Hotel_Name, Address, City, Contact_Number, Star_Rating, Image_Url) VALUES\n      (1, 'Hotel.com Grand Palace', '78 Gulshan Avenue, Block SE(F)', 'Dhaka', '+880-1711-001122', 5, 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80'),\n      (2, 'Hotel.com Bay Breeze Resort', 'Kolatoli Beach Road', 'Cox''s Bazar', '+880-1819-334455', 4, 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=800&q=80'),\n      (3, 'Hotel.com Tea Garden Lodge', 'Zindabazar Commercial Area', 'Sylhet', '+880-1912-667788', 4, 'https://images.unsplash.com/photo-1571896349842-33c89424de2d?auto=format&fit=crop&w=800&q=80'),\n      (4, 'Hotel.com Cloud Nine Resort', 'Agrabad Commercial Area', 'Chittagong', '+880-1311-445566', 5, 'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&w=800&q=80'),\n      (5, 'Hotel.com Lakeside Haven', 'Kaptai Lake Road', 'Rangamati', '+880-1411-778899', 4, 'https://images.unsplash.com/photo-1571003123894-1f0594d2b5d9?auto=format&fit=crop&w=800&q=80'),\n      (6, 'Hotel.com Heritage Eco Lodge', 'Grand Trunk Road', 'Sreemangal', '+880-1511-223344', 4, 'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?auto=format&fit=crop&w=800&q=80');",
+    "passwords": []
+  },
+  {
+    "sql": "INSERT INTO Guest (Guest_ID, Full_Name, Phone_Number, Email, Address, Nationality, Identification_Number, Username, Password) VALUES\n      (1, 'Tanvir Rahman', '+8801700112233', 'tanvir.rahman@example.com', 'House 42, Road 11, Banani, Dhaka', 'Bangladeshi', 'NID-1994829102938', 'tanvir', ?),\n      (2, 'Nusrat Jahan', '+8801811223344', 'nusrat.jahan@example.com', '78 Agrabad C/A, Chittagong', 'Bangladeshi', 'NID-1988471928374', 'nusrat', ?),\n      (3, 'Arif Hossain', '+8801922334455', 'arif.hossain@example.com', 'Dolphin Circle, Cox''s Bazar', 'Bangladeshi', 'PASSPORT-A09823411', 'arif', ?),\n      (4, 'Sabbir Hossain', '+8801799887766', 'sabbir@example.com', 'Dhaka', 'Bangladeshi', 'NID-9988776655', 'sabbir', ?);",
+    "passwords": [
+      "guestPw",
+      "guestPw",
+      "guestPw",
+      "guestPw2"
+    ]
+  },
+  {
+    "sql": "INSERT INTO Employee (Employee_ID, Hotel_ID, Full_Name, Role, Designation, Salary, Joining_Date, Employment_Status, Username, Password) VALUES\n      (1, 1, 'System Administrator', 'Admin', 'System Admin', 120000.00, '2024-01-01', 'Active', 'admin', ?),\n      (2, 1, 'Mahmud Hasan', 'Receptionist', 'Front Desk Executive', 45000.00, '2024-06-15', 'Active', 'receptionist', ?),\n      (3, 1, 'Second Administrator', 'Admin', 'System Admin 2', 120000.00, '2024-01-01', 'Active', 'admin2', ?);",
+    "passwords": [
+      "staffPw",
+      "staffPw",
+      "staffPw2"
+    ]
+  },
+  {
+    "sql": "INSERT INTO Room (Room_ID, Hotel_ID, Room_Number, Room_Type, Floor_Number, Capacity, Nightly_Rate, Sale_Rate, Room_Description, Availability_Status) VALUES\n      (1, 1, '101', 'Single', 1, 1, 4500.00, 3500.00, 'Single Deluxe Room \u2022 Air conditioning \u2022 King bed \u2022 Breakfast included \u2022 Free cancellation', 'Available'),\n      (2, 1, '102', 'Double', 1, 2, 8000.00, 6500.00, 'Executive Double Room \u2022 Ocean / City balcony view \u2022 Free Wi-Fi \u2022 Breakfast included', 'Available'),\n      (3, 1, '201', 'Suite', 2, 3, 18000.00, 15000.00, 'Presidential Luxury Suite \u2022 Private lounge \u2022 Jacuzzi bath \u2022 Complimentary airport transfer', 'Available'),\n      (4, 1, '301', 'Deluxe', 3, 4, 14000.00, 12000.00, 'Deluxe Family Suite \u2022 2 King beds \u2022 Air conditioning \u2022 Complimentary breakfast tray', 'Available'),\n      (5, 2, 'A1', 'Double', 1, 2, 7000.00, 5500.00, 'Beachfront Sea View Room \u2022 Private balcony \u2022 Air conditioning \u2022 Free cancellation', 'Available'),\n      (6, 2, 'B2', 'Suite', 2, 4, 22000.00, 18000.00, 'Oceanfront Luxury Villa Suite \u2022 Swimming pool access \u2022 Free breakfast \u2022 Private terrace', 'Available'),\n      (7, 3, 'T101', 'Deluxe', 1, 2, 5000.00, 4000.00, 'Tea Garden View Eco Lodge \u2022 King bed \u2022 Air conditioning \u2022 Organic herbal breakfast', 'Available'),\n      (8, 4, 'C101', 'Suite', 1, 2, 12000.00, 9500.00, 'Chittagong Port View Executive Suite \u2022 King Bed \u2022 Free Wi-Fi \u2022 Buffet Breakfast', 'Available'),\n      (9, 5, 'R201', 'Deluxe', 2, 2, 6500.00, 5000.00, 'Kaptai Lakefront Cottage \u2022 Hill balcony view \u2022 Kayak boat rental included', 'Available'),\n      (10, 6, 'S301', 'Double', 3, 3, 7500.00, 6000.00, 'Sreemangal Rainforest Bungalow \u2022 Tea tasting tour included \u2022 Complimentary breakfast', 'Available');",
+    "passwords": []
+  },
+  {
+    "sql": "INSERT INTO Service (Service_ID, Service_Type, Service_Name, Service_Charge, Service_Description) VALUES\n      (1, 'Laundry', 'Express Laundry & Pressing', 500.00, 'Full laundry wash, iron, and same-day room delivery'),\n      (2, 'Spa', 'Luxury Spa & Herbal Therapy', 3500.00, '90-minute aromatherapy and traditional thermal relaxation'),\n      (3, 'Transportation', 'Airport Chauffeur Transfer', 2500.00, 'Private sedan transport to/from Hazrat Shahjalal Airport'),\n      (4, 'Room Service', 'Gourmet Room Service Dining', 1200.00, '24/7 in-room dining tray service with local & continental dishes');",
+    "passwords": []
+  },
+  {
+    "sql": "INSERT INTO Reservation (Reservation_ID, Guest_ID, Room_ID, Booking_Date, Check_In_Date, Check_Out_Date, Reservation_Status, Number_of_Guests) VALUES\n      (1, 1, 3, '2026-07-20', '2026-08-01', '2026-08-05', 'Checked In', 2),\n      (2, 2, 2, '2026-07-25', '2026-08-03', '2026-08-07', 'Confirmed', 2);",
+    "passwords": []
+  },
+  {
+    "sql": "INSERT INTO Bill (Bill_ID, Reservation_ID, Total_Amount, Taxes, Discounts, Payment_Method, Payment_Status) VALUES\n      (1, 1, 65900.00, 0.00, 2000.00, 'Card', 'Paid');",
+    "passwords": []
+  },
+  {
+    "sql": "INSERT INTO Service_Record (Service_Record_ID, Guest_ID, Service_ID, Bill_ID, Service_Date, Quantity, Charge) VALUES\n      (1, 1, 2, 1, '2026-08-02', 1, 3500.00),\n      (2, 1, 4, 1, '2026-08-02', 2, 2400.00);",
+    "passwords": []
+  }
+]

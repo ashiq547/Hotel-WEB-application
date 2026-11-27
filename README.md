@@ -2,7 +2,7 @@
 HOTEL FRONTEND AND BACKEND PROJECT
 # Hotel.com - Full-Stack Hotel Management & Guest Reservation System (Bangladesh Edition)
 
-[![Tech Stack](https://img.shields.io/badge/Stack-React%20%7C%20TypeScript%20%7C%20Node.js%20%7C%20Express%20%7C%20MySQL-blue)](https://github.com/)
+[![Tech Stack](https://img.shields.io/badge/Stack-React%20%7C%20TypeScript%20%7C%20Python%20%7C%20FastAPI%20%7C%20MySQL-blue)](https://github.com/)
 [![License](https://img.shields.io/badge/License-MIT-orange)](#)
 [![CSE-303 Database Project](https://img.shields.io/badge/CSE--303-Relational%20Database%20Project-green)](#)
 
@@ -66,8 +66,8 @@ The application features **13 dedicated pages** categorized into Public Customer
 | Layer | Technology |
 | :--- | :--- |
 | **Frontend** | React 18, TypeScript, Vite, Tailwind CSS, Phosphor Icons, Axios |
-| **Backend** | Node.js, Express.js, JWT Authentication, Dotenv |
-| **Database** | MySQL / MariaDB (via `mysql2` connection pool) |
+| **Backend** | Python 3.9+, FastAPI, Uvicorn, JWT Authentication, python-dotenv |
+| **Database** | MySQL / MariaDB (via PyMySQL) |
 | **Tooling** | Concurrently, Vite HMR, TypeScript Compiler (`tsc`) |
 
 ---
@@ -83,33 +83,41 @@ cd Hotel-WEB-application
 ### 2. Install Project Dependencies
 ```bash
 npm install
+npm --prefix client install
+python3 -m venv server/.venv
+server/.venv/bin/python -m pip install -r server/requirements.txt
 ```
 
 ### 3. Configure Environment Variables
 Create a `.env` file inside the `server/` directory:
 ```env
 # Path: server/.env
-PORT=5000
+PORT=5001
 DB_HOST=localhost
 DB_PORT=3306
 DB_USER=root
 DB_PASSWORD=
 DB_NAME=Hotel_Management_System
-JWT_SECRET=hotel_management_system_super_secret_jwt_key_2026
+JWT_SECRET=replace_with_a_long_random_secret
+PEPPER=replace_with_a_separate_random_secret
 ```
 
-### 4. Initialize Database & Seed Sample Data
-Ensure MySQL service is running in XAMPP or MySQL Server, then run:
+### 4. Initialize an Empty Database & Seed Sample Data
+Ensure MySQL is running. Existing installations can reuse their current database and `server/.env` unchanged, including `JWT_SECRET` and `PEPPER` so passwords and tokens remain valid. For a new, empty database, run:
 ```bash
 npm run db:init
 ```
+
+Initialization refuses a nonempty database to preserve existing data. It does not reset your database.
 
 ### 5. Start Development Server
 ```bash
 npm run dev
 ```
 
-Open your browser and navigate to **`http://localhost:3000`**.
+Open **`http://localhost:3000`**. FastAPI runs on port 5001 with interactive API docs at **`http://localhost:5001/docs`**. The Vite `/api` proxy needs no changes.
+
+On Windows, create the environment with `py -m venv server/.venv`, then install using `server\.venv\Scripts\python -m pip install -r server/requirements.txt`. The npm scripts select the appropriate virtual environment automatically.
 
 ---
 
@@ -139,7 +147,20 @@ Open your browser and navigate to **`http://localhost:3000`**.
 
 From the root project directory:
 - `npm run dev`: Runs backend server and client concurrently in development mode.
-- `npm run db:init`: Cleans, initializes, and seeds the MySQL database according to CSE-303 ERD standard.
+- `npm run db:init`: Initializes and seeds an empty MySQL database according to CSE-303 ERD standard.
 - `npm run build`: Compiles TypeScript and builds the production frontend bundle.
 
 ---
+
+## FastAPI backend
+
+`server/app.py` is the active API entry point. `npm run dev` starts Uvicorn with reload and the React client. To run only the backend, use `npm run start:server`; run its regression suite with `npm run test:server`. Python dependencies are in `server/requirements.txt`.
+
+The `/api` route paths, field names, JWT signatures, bcrypt peppering, refresh cookie, role permissions, and MySQL tables are compatible with the previous backend. Guest ownership is enforced for reservations, service records and account updates. Role changes and bans are read from `User_Account` on each authenticated request.
+
+`CORS_ORIGINS` accepts comma-separated frontend origins; `PORT` defaults to 5001. `NODE_ENV=production` requires `JWT_SECRET` and enables secure refresh cookies. Keep the existing `PEPPER` when switching runtimes.
+
+The server is Python-only: FastAPI routes, security helpers, MySQL access, initialization, and tests. Start it directly with `python3 server/run.py --reload`, initialize a new database with `python3 server/run.py --init-db`, or run tests with `python3 server/run.py --test`. No database reset or destructive schema migration is required.
+
+The root Vercel configuration hosts the frontend only. Deploy FastAPI to a Python-capable host and route `/api` to it when deploying the full application.
+# test-p
