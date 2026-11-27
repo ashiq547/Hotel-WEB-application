@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const { hashPassword } = require('../utils/passwordSecurity');
 
 const mapGuestFields = (g) => {
   if (!g) return g;
@@ -225,7 +226,7 @@ exports.createGuest = async (req, res, next) => {
     const [result] = await db.query(
       `INSERT INTO Guest (Full_Name, Phone_Number, Email, Address, Nationality, Identification_Number, Username, Password)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [guestFullName, Phone_Number, Email || null, Address || null, Nationality || 'Bangladeshi', Identification_Number, Username ? Username.trim() : null, Password ? Password.trim() : 'password']
+      [guestFullName, Phone_Number, Email || null, Address || null, Nationality || 'Bangladeshi', Identification_Number, Username ? Username.trim() : null, await hashPassword(Password || 'password')]
     );
 
     const newGuestId = result.insertId;

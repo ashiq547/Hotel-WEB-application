@@ -1,4 +1,5 @@
 const mysql = require('mysql2/promise');
+const { hashPassword } = require('../utils/passwordSecurity');
 const fs = require('fs');
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '../.env') });
@@ -95,22 +96,29 @@ async function initDb() {
     `);
 
     // Seed Guests directly into Guest table (no Person table)
+    // Seed Guests with bcrypt-hashed passwords (never plain text)
     console.log('Seeding Guests and Employees directly into entity tables...');
+    const guestPw = await hashPassword('password');
+    const guestPw2 = await hashPassword('1234');
     await connection.query(`
       INSERT INTO Guest (Guest_ID, Full_Name, Phone_Number, Email, Address, Nationality, Identification_Number, Username, Password) VALUES
-      (1, 'Tanvir Rahman', '+8801700112233', 'tanvir.rahman@example.com', 'House 42, Road 11, Banani, Dhaka', 'Bangladeshi', 'NID-1994829102938', 'tanvir', 'password'),
-      (2, 'Nusrat Jahan', '+8801811223344', 'nusrat.jahan@example.com', '78 Agrabad C/A, Chittagong', 'Bangladeshi', 'NID-1988471928374', 'nusrat', 'password'),
-      (3, 'Arif Hossain', '+8801922334455', 'arif.hossain@example.com', 'Dolphin Circle, Cox''s Bazar', 'Bangladeshi', 'PASSPORT-A09823411', 'arif', 'password'),
-      (4, 'Sabbir Hossain', '+8801799887766', 'sabbir@example.com', 'Dhaka', 'Bangladeshi', 'NID-9988776655', 'sabbir', '1234');
-    `);
+      (1, 'Tanvir Rahman', '+8801700112233', 'tanvir.rahman@example.com', 'House 42, Road 11, Banani, Dhaka', 'Bangladeshi', 'NID-1994829102938', 'tanvir', ?),
+      (2, 'Nusrat Jahan', '+8801811223344', 'nusrat.jahan@example.com', '78 Agrabad C/A, Chittagong', 'Bangladeshi', 'NID-1988471928374', 'nusrat', ?),
+      (3, 'Arif Hossain', '+8801922334455', 'arif.hossain@example.com', 'Dolphin Circle, Cox''s Bazar', 'Bangladeshi', 'PASSPORT-A09823411', 'arif', ?),
+      (4, 'Sabbir Hossain', '+8801799887766', 'sabbir@example.com', 'Dhaka', 'Bangladeshi', 'NID-9988776655', 'sabbir', ?);`,
+      [guestPw, guestPw, guestPw, guestPw2]
+    );
 
-    // Seed Employees directly into Employee table (no Person table)
+    // Seed Employees with bcrypt-hashed passwords (never plain text)
+    const staffPw = await hashPassword('admin123');
+    const staffPw2 = await hashPassword('54321');
     await connection.query(`
       INSERT INTO Employee (Employee_ID, Hotel_ID, Full_Name, Role, Designation, Salary, Joining_Date, Employment_Status, Username, Password) VALUES
-      (1, 1, 'System Administrator', 'Admin', 'System Admin', 120000.00, '2024-01-01', 'Active', 'admin', 'admin123'),
-      (2, 1, 'Mahmud Hasan', 'Receptionist', 'Front Desk Executive', 45000.00, '2024-06-15', 'Active', 'receptionist', 'admin123'),
-      (3, 1, 'Second Administrator', 'Admin', 'System Admin 2', 120000.00, '2024-01-01', 'Active', 'admin2', '54321');
-    `);
+      (1, 1, 'System Administrator', 'Admin', 'System Admin', 120000.00, '2024-01-01', 'Active', 'admin', ?),
+      (2, 1, 'Mahmud Hasan', 'Receptionist', 'Front Desk Executive', 45000.00, '2024-06-15', 'Active', 'receptionist', ?),
+      (3, 1, 'Second Administrator', 'Admin', 'System Admin 2', 120000.00, '2024-01-01', 'Active', 'admin2', ?);`,
+      [staffPw, staffPw, staffPw2]
+    );
 
     // Seed Rooms across all 6 hotels
     console.log('Seeding Rooms (BDT ৳ rates & sale rates)...');

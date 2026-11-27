@@ -1,55 +1,71 @@
 const jwt = require('jsonwebtoken');
 const db = require('../config/db');
+const {
+  JWT_SECRET,
+  TOKEN_TTL,
+  hashPassword,
+  verifyPassword,
+  signAccessToken
+} = require('../utils/passwordSecurity');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'hotel_management_system_super_secret_jwt_key_2026';
+/**
+ * Auth controller.
+ *
+ * Security rules:
+ * - Passwords are hashed with bcrypt (+ server-side pepper), never stored in plain text.
+ * - Access tokens are signed JWTs with a short lifetime (<= 15 min), containing user id and role.
+ * - No hardcoded credentials, no plaintext fallback passwords, no bypass shortcuts.
+ * - Failed logins always return 401 with a generic message.
+ */
+
+const GENERIC_ERROR = 'Invalid credentials';
+
+/** Issue a short-lived access token containing user id and role. */
+const issueToken = (id, role, extra = {}) =>
+  signAccessToken({ id, role, ...extra });
 
 // Staff Portal Login (Admin, Manager, Receptionist)
 exports.login = async (req, res, next) => {
   try {
     const { username, password } = req.body;
-    
+
     if (!username || !password) {
       return res.status(400).json({ error: 'Username and password are required' });
     }
 
-    const inputUser = username.trim();
-    const inputPass = password.trim();
+    const inputUser = String(username).trim();
+    const inputPass = String(password);
 
-    // 1. Default System Admin Check (admin / admin123)
-    if (inputUser.toLowerCase() === 'admin' && (inputPass === 'admin123' || inputPass === 'password')) {
-      const token = jwt.sign(
-        { id: 1, username: 'admin', role: 'Admin', name: 'System Administrator' },
-        JWT_SECRET,
-        { expiresIn: '24h' }
-      );
-      return res.json({
-        message: 'Staff login successful',
-        token,
-        user: { id: 1, username: 'admin', role: 'Admin', name: 'System Administrator' }
-      });
-    }
-
-    // 2. Query Employee table in MySQL
+    // Look the employee up by username or email, then verify the password hash in code.
     const [employees] = await db.query(
       `SELECT Employee_ID, Full_Name, Designation, Role, Username, Password, Email
        FROM Employee
-       WHERE (LOWER(Username) = LOWER(?) OR LOWER(Email) = LOWER(?))
-         AND (Password = ? OR ? = 'admin123')`,
-      [inputUser, inputUser, inputPass, inputPass]
+       WHERE LOWER(Username) = LOWER(?) OR LOWER(Email) = LOWER(?)`,
+      [inputUser, inputUser]
     );
 
     if (employees.length === 0) {
-      return res.status(401).json({ error: 'Invalid staff credentials. Default admin account: admin / admin123' });
+      return res.status(401).json({ error: GENERIC_ERROR });
     }
 
     const emp = employees[0];
-    const role = emp.Role || emp.Designation || 'Receptionist';
 
-    const token = jwt.sign(
-      { id: emp.Employee_ID, username: emp.Username || emp.Email, role: role, name: emp.Full_Name },
-      JWT_SECRET,
-      { expiresIn: '24h' }
-    );
+    const verified = await verifyPassword(inputPass, emp.Password);
+    const ok = verified === true || (verified && verified.ok);
+    if (!ok) {
+      return res.status(401).json({ error: GENERIC_ERROR });
+    }
+
+    // Transparently upgrade legacy plain-text passwords to hashed values.
+    if (verified && verified.upgraded) {
+      await db.query('UPDATE Employee SET Password = ? WHERE Employee_ID = ?', [verified.upgraded, emp.Employee_ID]);
+    }
+
+    const role = emp.Role || emp.Designation || 'Receptionist';
+    const token = issueToken(emp.Employee_ID, role, {
+      username: emp.Username || emp.Email,
+      name: emp.Full_Name
+    });
 
     res.json({
       message: 'Staff login successful',
@@ -57,7 +73,7 @@ exports.login = async (req, res, next) => {
       user: {
         id: emp.Employee_ID,
         username: emp.Username || emp.Email,
-        role: role,
+        role,
         name: emp.Full_Name
       }
     });
@@ -75,30 +91,37 @@ exports.guestLogin = async (req, res, next) => {
       return res.status(400).json({ error: 'Email ID / Username and Password are required' });
     }
 
-    const inputUser = emailOrUsername.trim();
-    const inputPass = password.trim();
+    const inputUser = String(emailOrUsername).trim();
+    const inputPass = String(password);
 
-    const [guests] = await db.query(`
-      SELECT Guest_ID, Full_Name, Phone_Number, Email, Username, Identification_Number, Password
-      FROM Guest
-      WHERE (LOWER(Email) = LOWER(?) OR LOWER(Phone_Number) = LOWER(?) OR LOWER(Username) = LOWER(?)) 
-        AND (Password = ? OR Identification_Number = ? OR ? = 'password' OR ? = '123456')
-    `, [inputUser, inputUser, inputUser, inputPass, inputPass, inputPass, inputPass]);
+    const [guests] = await db.query(
+      `SELECT Guest_ID, Full_Name, Phone_Number, Email, Username, Password
+       FROM Guest
+       WHERE LOWER(Email) = LOWER(?) OR LOWER(Phone_Number) = LOWER(?) OR LOWER(Username) = LOWER(?)`,
+      [inputUser, inputUser, inputUser]
+    );
 
     if (guests.length === 0) {
-      return res.status(401).json({ 
-        error: 'Invalid guest credentials. Please check your Email ID / Username and Password.' 
-      });
+      return res.status(401).json({ error: GENERIC_ERROR });
     }
 
     const guest = guests[0];
-    const guestName = guest.Full_Name;
 
-    const token = jwt.sign(
-      { id: guest.Guest_ID, username: guest.Email || guest.Phone_Number, role: 'Guest', name: guestName },
-      JWT_SECRET,
-      { expiresIn: '24h' }
-    );
+    const verified = await verifyPassword(inputPass, guest.Password);
+    const ok = verified === true || (verified && verified.ok);
+    if (!ok) {
+      return res.status(401).json({ error: GENERIC_ERROR });
+    }
+
+    // Transparently upgrade legacy plain-text passwords to hashed values.
+    if (verified && verified.upgraded) {
+      await db.query('UPDATE Guest SET Password = ? WHERE Guest_ID = ?', [verified.upgraded, guest.Guest_ID]);
+    }
+
+    const token = issueToken(guest.Guest_ID, 'Guest', {
+      username: guest.Email || guest.Phone_Number,
+      name: guest.Full_Name
+    });
 
     res.json({
       message: 'Customer login successful',
@@ -107,7 +130,7 @@ exports.guestLogin = async (req, res, next) => {
         id: guest.Guest_ID,
         username: guest.Email || guest.Phone_Number,
         role: 'Guest',
-        name: guestName
+        name: guest.Full_Name
       }
     });
   } catch (err) {
@@ -178,17 +201,15 @@ exports.changePassword = async (req, res, next) => {
       return res.status(404).json({ error: 'Account not found' });
     }
 
-    const current = rows[0].Password || '';
-    // Default admin shortcut: admin account may have empty/known password
-    const oldOk =
-      (current && oldPassword === current) ||
-      (!isGuest && String(id) === '1' && (oldPassword === 'admin123' || oldPassword === 'password'));
-
+    const verified = await verifyPassword(oldPassword, rows[0].Password);
+    const oldOk = verified === true || (verified && verified.ok);
     if (!oldOk) {
       return res.status(401).json({ error: 'Current password is incorrect' });
     }
 
-    await db.query(`UPDATE ${table} SET Password = ? WHERE ${pk} = ?`, [newPassword, id]);
+    // Store the new password hashed (+ pepper), never in plain text.
+    const hashed = await hashPassword(newPassword);
+    await db.query(`UPDATE ${table} SET Password = ? WHERE ${pk} = ?`, [hashed, id]);
     res.json({ message: 'Password updated successfully' });
   } catch (err) {
     next(err);

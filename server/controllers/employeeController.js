@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const { hashPassword } = require('../utils/passwordSecurity');
 
 const mapEmployeeFields = (e) => {
   if (!e) return e;
@@ -83,7 +84,7 @@ exports.createEmployee = async (req, res, next) => {
         Phone_Number || null,
         Email || null,
         Username ? Username.trim() : null,
-        Password ? Password.trim() : 'admin123'
+        await hashPassword(Password || 'admin123')
       ]
     );
 
@@ -148,7 +149,7 @@ exports.updateEmployee = async (req, res, next) => {
         Phone_Number,
         Email,
         Username ? Username.trim() : null,
-        Password ? Password.trim() : null,
+        Password ? await hashPassword(Password) : null,
         id
       ]
     );
