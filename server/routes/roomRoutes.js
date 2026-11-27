@@ -1,15 +1,20 @@
 const express = require('express');
 const router = express.Router();
 const roomController = require('../controllers/roomController');
-const { authenticateToken, authorizeRoles } = require('../middleware/auth');
+const rbac = require('../utils/rbac');
+const { authenticateToken } = require('../middleware/auth');
+
+const P = rbac.PERMISSIONS;
 
 // Public GET routes for room inventory
 router.get('/', roomController.getAllRooms);
 router.get('/available', roomController.getAvailableRooms);
 
-// Protected routes for room creation & management
-router.post('/', authenticateToken, authorizeRoles('Admin', 'Manager'), roomController.createRoom);
-router.put('/:id', authenticateToken, authorizeRoles('Admin', 'Manager', 'Receptionist'), roomController.updateRoom);
-router.delete('/:id', authenticateToken, authorizeRoles('Admin'), roomController.deleteRoom);
+// Protected routes — membership/ownership checked in the controller:
+// members of the hotel owning the room may create/update it; only
+// Admins (or manager-members) may delete.
+router.post('/', authenticateToken, rbac.requirePermission(P.ROOM_CREATE), roomController.createRoom);
+router.put('/:id', authenticateToken, rbac.requireAnyPermission(P.ROOM_UPDATE_OWNED, P.ROOM_UPDATE_ANY), roomController.updateRoom);
+router.delete('/:id', authenticateToken, rbac.requireAnyPermission(P.ROOM_DELETE_OWNED, P.ROOM_DELETE_ANY), roomController.deleteRoom);
 
 module.exports = router;

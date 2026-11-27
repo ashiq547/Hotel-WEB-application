@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const db = require('../config/db');
 const sessionStore = require('../utils/sessionStore');
+const userAccounts = require('../utils/userAccounts');
 const {
   JWT_SECRET,
   TOKEN_TTL,
@@ -79,7 +80,15 @@ exports.login = async (req, res, next) => {
       await db.query('UPDATE Employee SET Password = ? WHERE Employee_ID = ?', [verified.upgraded, emp.Employee_ID]);
     }
 
-    const role = emp.Role || emp.Designation || 'Receptionist';
+    // Banned users are refused at login and on every subsequent request.
+    if (await userAccounts.isBanned('Employee', emp.Employee_ID)) {
+      return res.status(403).json({ error: 'Your account is banned' });
+    }
+
+    // The DB-stored role (User_Account) is authoritative, falling back to the
+    // Employee table's Role column.
+    const dbRole = await userAccounts.getRole('Employee', emp.Employee_ID, null);
+    const role = dbRole && dbRole !== 'Receptionist' ? dbRole : (emp.Role || emp.Designation || 'Receptionist');
     const token = issueToken(emp.Employee_ID, role, {
       username: emp.Username || emp.Email,
       name: emp.Full_Name
@@ -141,6 +150,11 @@ exports.guestLogin = async (req, res, next) => {
     // Transparently upgrade legacy plain-text passwords to hashed values.
     if (verified && verified.upgraded) {
       await db.query('UPDATE Guest SET Password = ? WHERE Guest_ID = ?', [verified.upgraded, guest.Guest_ID]);
+    }
+
+    // Banned users are refused at login and on every subsequent request.
+    if (await userAccounts.isBanned('Guest', guest.Guest_ID)) {
+      return res.status(403).json({ error: 'Your account is banned' });
     }
 
     const token = issueToken(guest.Guest_ID, 'Guest', {
@@ -369,8 +383,20 @@ exports.refresh = async (req, res, next) => {
       return res.status(401).json({ error: 'Account no longer exists' });
     }
 
+    // A banned user is rejected on the very next refresh.
+    const userType = isGuest ? 'Guest' : 'Employee';
+    if (await userAccounts.isBanned(userType, row.User_ID)) {
+      await sessionStore.revokeAllSessions(userType, row.User_ID);
+      clearRefreshCookie(res);
+      return res.status(403).json({ error: 'Your account is banned' });
+    }
+
     const u = users[0];
-    const role = isGuest ? 'Guest' : (u.Role || u.Designation || 'Receptionist');
+    // DB-stored role is authoritative on refresh too.
+    const dbRole = await userAccounts.getRole(userType, row.User_ID, null);
+    const role = isGuest
+      ? 'Guest'
+      : (dbRole && dbRole !== 'Receptionist' ? dbRole : (u.Role || u.Designation || 'Receptionist'));
     const token = issueToken(u.id, role, {
       username: isGuest ? (u.Email || '') : (u.Username || u.Email),
       name: u.name

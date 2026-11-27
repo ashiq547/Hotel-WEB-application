@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const rbac = require('../utils/rbac');
 
 // Column sizes from the Hotel table (Image_Url is added by scripts/initDb.js)
 const FIELD_LIMITS = { Hotel_Name: 100, Address: 255, City: 100, Contact_Number: 20, Image_Url: 500 };
@@ -96,6 +97,21 @@ exports.updateHotel = async (req, res, next) => {
       return res.status(404).json({ error: 'Hotel not found' });
     }
 
+    // FINE-GRAINED SHARED-RESOURCE RULE: only the owner (Admin) or a
+    // Manager-level member of THIS hotel may update/rename it.
+    const isGuest = String(req.user.role).toLowerCase() === 'guest';
+    if (!isGuest) {
+      const memberRole = await rbac.isHotelMember(id, req.user.id);
+      const isOwner = req.rbac && req.rbac.role === 'Admin';
+      if (!isOwner && memberRole !== 'Manager') {
+        return memberRole
+          ? res.status(403).json({ error: 'Only the hotel owner or a manager-member can update this hotel' })
+          : res.status(404).json({ error: 'Hotel not found' });
+      }
+    } else {
+      return res.status(403).json({ error: 'Access forbidden' });
+    }
+
     await db.query(
       'UPDATE Hotel SET Hotel_Name = ?, Address = ?, City = ?, Contact_Number = ?, Star_Rating = ?, Image_Url = ? WHERE Hotel_ID = ?',
       [
@@ -111,6 +127,65 @@ exports.updateHotel = async (req, res, next) => {
 
     const [updated] = await db.query('SELECT * FROM Hotel WHERE Hotel_ID = ?', [id]);
     res.json(updated[0]);
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ---- Hotel membership management (owner-only) ----
+
+// List members of a hotel
+exports.listMembers = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const [hotels] = await db.query('SELECT Hotel_ID FROM Hotel WHERE Hotel_ID = ?', [id]);
+    if (hotels.length === 0) {
+      return res.status(404).json({ error: 'Hotel not found' });
+    }
+    const members = await rbac.listHotelMembers(id);
+    res.json({ members });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// Add a member (owner only — permission enforced by the route)
+exports.addMember = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { employeeId, memberRole } = req.body;
+    if (!employeeId) {
+      return res.status(400).json({ error: 'employeeId is required' });
+    }
+    if (memberRole && !['Member', 'Manager'].includes(memberRole)) {
+      return res.status(400).json({ error: 'memberRole must be Member or Manager' });
+    }
+
+    const [hotels] = await db.query('SELECT Hotel_ID FROM Hotel WHERE Hotel_ID = ?', [id]);
+    if (hotels.length === 0) {
+      return res.status(404).json({ error: 'Hotel not found' });
+    }
+    const [emps] = await db.query('SELECT Employee_ID FROM Employee WHERE Employee_ID = ?', [employeeId]);
+    if (emps.length === 0) {
+      return res.status(404).json({ error: 'Employee not found' });
+    }
+
+    await rbac.addHotelMember(id, employeeId, memberRole || 'Member', req.user.id);
+    res.status(201).json({ message: 'Member added' });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// Remove a member (owner only — permission enforced by the route)
+exports.removeMember = async (req, res, next) => {
+  try {
+    const { id, employeeId } = req.params;
+    const removed = await rbac.removeHotelMember(id, employeeId);
+    if (!removed) {
+      return res.status(404).json({ error: 'Membership not found' });
+    }
+    res.json({ message: 'Member removed' });
   } catch (err) {
     next(err);
   }

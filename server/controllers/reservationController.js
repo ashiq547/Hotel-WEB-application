@@ -149,6 +149,11 @@ exports.updateReservation = async (req, res, next) => {
       return res.status(404).json({ error: 'Reservation not found' });
     }
 
+    // OWNERSHIP: guests may only update their own reservations.
+    if (!rbac.isStaff(req) && Number(existing[0].Guest_ID) !== Number(req.user.id)) {
+      return res.status(404).json({ error: 'Reservation not found' });
+    }
+
     const currentStatus = existing[0].Reservation_Status;
     const newStatus = Reservation_Status || currentStatus;
     const roomId = existing[0].Room_ID;
@@ -190,6 +195,11 @@ exports.deleteReservation = async (req, res, next) => {
     const { id } = req.params;
     const [existing] = await db.query('SELECT * FROM Reservation WHERE Reservation_ID = ?', [id]);
     if (existing.length === 0) {
+      return res.status(404).json({ error: 'Reservation not found' });
+    }
+
+    // OWNERSHIP: guests may only delete (cancel) their own reservations.
+    if (!rbac.isStaff(req) && Number(existing[0].Guest_ID) !== Number(req.user.id)) {
       return res.status(404).json({ error: 'Reservation not found' });
     }
 

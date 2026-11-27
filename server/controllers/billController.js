@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const rbac = require('../utils/rbac');
 
 const mapBillFields = (b) => {
   if (!b) return b;
@@ -19,7 +20,8 @@ const mapBillFields = (b) => {
 
 exports.getAllBills = async (req, res, next) => {
   try {
-    const [bills] = await db.query(`
+    // OWNERSHIP: guests may only see their own bills (404-style hiding via WHERE).
+    let query = `
       SELECT b.*, (b.Total_Amount + b.Taxes - b.Discounts) as Final_Amount,
              r.Check_In_Date, r.Check_Out_Date, r.Guest_ID,
              g.Full_Name, g.Email, g.Phone_Number,
@@ -29,8 +31,15 @@ exports.getAllBills = async (req, res, next) => {
       JOIN Guest g ON r.Guest_ID = g.Guest_ID
       JOIN Room rm ON r.Room_ID = rm.Room_ID
       JOIN Hotel h ON rm.Hotel_ID = h.Hotel_ID
-      ORDER BY b.Bill_ID DESC
-    `);
+      WHERE 1=1
+    `;
+    const params = [];
+    const own = rbac.ownershipFilter(req, 'r.Guest_ID');
+    query += own.clause;
+    params.push(...own.params);
+    query += ' ORDER BY b.Bill_ID DESC';
+
+    const [bills] = await db.query(query, params);
     res.json(bills.map(mapBillFields));
   } catch (err) {
     next(err);
@@ -55,6 +64,11 @@ exports.getBillById = async (req, res, next) => {
     `, [id]);
 
     if (bills.length === 0) {
+      return res.status(404).json({ error: 'Bill not found' });
+    }
+
+    // OWNERSHIP: other guests' bills are invisible (404).
+    if (!rbac.isStaff(req) && Number(bills[0].Guest_ID) !== Number(req.user.id)) {
       return res.status(404).json({ error: 'Bill not found' });
     }
 

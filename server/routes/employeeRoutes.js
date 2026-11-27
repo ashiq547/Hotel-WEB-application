@@ -1,12 +1,15 @@
 const express = require('express');
 const router = express.Router();
 const employeeController = require('../controllers/employeeController');
-const { authenticateToken, authorizeRoles } = require('../middleware/auth');
+const rbac = require('../utils/rbac');
+const { authenticateToken } = require('../middleware/auth');
 
-router.get('/', authenticateToken, employeeController.getAllEmployees);
+const P = rbac.PERMISSIONS;
+
+router.get('/', authenticateToken, rbac.requirePermission(P.EMPLOYEE_READ_ALL), employeeController.getAllEmployees);
 router.get('/:id', authenticateToken, employeeController.getEmployeeById);
-router.post('/', authenticateToken, authorizeRoles('Admin', 'Manager'), employeeController.createEmployee);
-router.put('/:id', authenticateToken, authorizeRoles('Admin', 'Manager'), employeeController.updateEmployee);
-router.delete('/:id', authenticateToken, authorizeRoles('Admin'), employeeController.deleteEmployee);
+router.post('/', authenticateToken, rbac.requirePermission(P.EMPLOYEE_CREATE), employeeController.createEmployee);
+router.put('/:id', authenticateToken, rbac.requirePermission(P.EMPLOYEE_UPDATE_ANY), employeeController.updateEmployee);
+router.delete('/:id', authenticateToken, rbac.requirePermission(P.EMPLOYEE_DELETE_ANY), employeeController.deleteEmployee);
 
 module.exports = router;

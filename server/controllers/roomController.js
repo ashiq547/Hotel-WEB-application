@@ -1,4 +1,21 @@
 const db = require('../config/db');
+const rbac = require('../utils/rbac');
+
+/**
+ * Shared-resource guard: for a given hotel, staff may act only if they are an
+ * Admin (owner) or a member of that hotel. Guests are always refused.
+ * Returns { ok, status, error }.
+ */
+async function guardHotelStaff(hotelId, req) {
+  const isGuest = String(req.user.role).toLowerCase() === 'guest';
+  if (isGuest) return { ok: false, status: 403, error: 'Staff access required' };
+  const role = req.rbac && req.rbac.role;
+  if (role === 'Admin') return { ok: true };
+  const memberRole = await rbac.isHotelMember(hotelId, req.user.id);
+  if (memberRole) return { ok: true, memberRole };
+  // Hide membership existence from outsiders.
+  return { ok: false, status: 404, error: 'Hotel not found' };
+}
 
 exports.getAllRooms = async (req, res, next) => {
   try {
@@ -62,6 +79,12 @@ exports.createRoom = async (req, res, next) => {
       return res.status(400).json({ error: 'Hotel_ID, Room_Number, Room_Type, and Nightly_Rate are required' });
     }
 
+    // Membership rule: only members of the hotel (or Admin owners) may add rooms to it.
+    const guard = await guardHotelStaff(Hotel_ID, req);
+    if (!guard.ok) {
+      return res.status(guard.status).json({ error: guard.error });
+    }
+
     const [result] = await db.query(
       `INSERT INTO Room (Hotel_ID, Room_Number, Room_Type, Floor_Number, Capacity, Nightly_Rate, Sale_Rate, Room_Description, Availability_Status)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -98,8 +121,14 @@ exports.updateRoom = async (req, res, next) => {
       return res.status(404).json({ error: 'Room not found' });
     }
 
+    // Membership rule on the hotel that owns the room.
+    const guard = await guardHotelStaff(existing[0].Hotel_ID, req);
+    if (!guard.ok) {
+      return res.status(guard.status).json({ error: guard.error });
+    }
+
     await db.query(
-      `UPDATE Room SET 
+      `UPDATE Room SET  
         Hotel_ID = ?, 
         Room_Number = ?, 
         Room_Type = ?, 
@@ -140,6 +169,15 @@ exports.deleteRoom = async (req, res, next) => {
     const [existing] = await db.query('SELECT * FROM Room WHERE Room_ID = ?', [id]);
     if (existing.length === 0) {
       return res.status(404).json({ error: 'Room not found' });
+    }
+
+    // Only Admin owners or Manager-members of the owning hotel may delete rooms.
+    const guard = await guardHotelStaff(existing[0].Hotel_ID, req);
+    if (!guard.ok) {
+      return res.status(guard.status).json({ error: guard.error });
+    }
+    if (guard.memberRole && guard.memberRole !== 'Manager') {
+      return res.status(403).json({ error: 'Only the hotel owner or a manager-member can delete rooms' });
     }
 
     await db.query('DELETE FROM Room WHERE Room_ID = ?', [id]);

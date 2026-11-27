@@ -15,6 +15,7 @@ const reservationRoutes = require('./routes/reservationRoutes');
 const serviceRoutes = require('./routes/serviceRoutes');
 const billRoutes = require('./routes/billRoutes');
 const reportRoutes = require('./routes/reportRoutes');
+const userRoutes = require('./routes/userRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -40,6 +41,7 @@ app.use('/api/reservations', reservationRoutes);
 app.use('/api/services', serviceRoutes);
 app.use('/api/bills', billRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/users', userRoutes);
 
 // Error Handler
 app.use(errorHandler);
