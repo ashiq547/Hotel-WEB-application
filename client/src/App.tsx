@@ -19,7 +19,14 @@ import { ProfilePage } from './pages/ProfilePage';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { token, loading } = useAuth();
-  if (loading) return null;
+  // Hold back content while the session is restored so guest UI never flashes.
+  if (loading) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="font-mono text-xs text-acc-500 animate-pulse">Restoring session…</div>
+      </div>
+    );
+  }
   if (!token) return <Navigate to="/guest-login" replace />;
   return <>{children}</>;
 };

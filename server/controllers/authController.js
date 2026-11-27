@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const db = require('../config/db');
+const sessionStore = require('../utils/sessionStore');
 const {
   JWT_SECRET,
   TOKEN_TTL,
@@ -20,9 +21,26 @@ const {
 
 const GENERIC_ERROR = 'Invalid credentials';
 
+// In-memory failed password-change attempts: key = userType:id:ip
+const failedAttempts = new Map();
+setInterval(() => failedAttempts.clear(), 30 * 60 * 1000).unref?.();
+
 /** Issue a short-lived access token containing user id and role. */
 const issueToken = (id, role, extra = {}) =>
   signAccessToken({ id, role, ...extra });
+
+const REFRESH_COOKIE = 'hms_refresh';
+const COOKIE_OPTS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'lax',
+  path: '/api/auth'
+};
+
+const setRefreshCookie = (res, raw, expires) =>
+  res.cookie(REFRESH_COOKIE, raw, { ...COOKIE_OPTS, expires });
+const clearRefreshCookie = (res) =>
+  res.clearCookie(REFRESH_COOKIE, { path: COOKIE_OPTS.path });
 
 // Staff Portal Login (Admin, Manager, Receptionist)
 exports.login = async (req, res, next) => {
@@ -66,6 +84,13 @@ exports.login = async (req, res, next) => {
       username: emp.Username || emp.Email,
       name: emp.Full_Name
     });
+
+    // Start a server-side session (httpOnly refresh cookie)
+    const session = await sessionStore.createSession(
+      'Employee', emp.Employee_ID,
+      req.headers['user-agent'], req.ip
+    );
+    setRefreshCookie(res, session.raw, session.expires);
 
     res.json({
       message: 'Staff login successful',
@@ -123,6 +148,13 @@ exports.guestLogin = async (req, res, next) => {
       name: guest.Full_Name
     });
 
+    // Start a server-side session (httpOnly refresh cookie)
+    const session = await sessionStore.createSession(
+      'Guest', guest.Guest_ID,
+      req.headers['user-agent'], req.ip
+    );
+    setRefreshCookie(res, session.raw, session.expires);
+
     res.json({
       message: 'Customer login successful',
       token,
@@ -140,8 +172,8 @@ exports.guestLogin = async (req, res, next) => {
 
 // Helper: make sure Profile_Image column exists on both tables
 const ensureImageColumn = async () => {
-  try { await db.query('ALTER TABLE Employee ADD COLUMN Profile_Image LONGTEXT'); } catch (e) {}
-  try { await db.query('ALTER TABLE Guest ADD COLUMN Profile_Image LONGTEXT'); } catch (e) {}
+  try { await db.query('ALTER TABLE Employee ADD COLUMN Profile_Image LONGTEXT'); } catch (e) { }
+  try { await db.query('ALTER TABLE Guest ADD COLUMN Profile_Image LONGTEXT'); } catch (e) { }
 };
 
 // Get unified profile info for the logged-in user (staff or guest)
@@ -195,6 +227,21 @@ exports.changePassword = async (req, res, next) => {
     const isGuest = String(role).toLowerCase() === 'guest';
     const table = isGuest ? 'Guest' : 'Employee';
     const pk = isGuest ? 'Guest_ID' : 'Employee_ID';
+    const userType = isGuest ? 'Guest' : 'Employee';
+
+    // --- Failed-attempt tracking (server side, in-memory per account+IP) ---
+    const key = `${userType}:${id}:${req.ip || 'unknown'}`;
+    const attempt = failedAttempts.get(key) || { count: 0, firstAt: Date.now(), lockedUntil: 0 };
+
+    // Lock out for 15 minutes after 5 failed attempts within 15 minutes.
+    if (attempt.lockedUntil > Date.now()) {
+      const mins = Math.ceil((attempt.lockedUntil - Date.now()) / 60000);
+      return res.status(429).json({ error: `Too many failed attempts. Try again in ${mins} minute(s).` });
+    }
+    if (Date.now() - attempt.firstAt > 15 * 60 * 1000) {
+      attempt.count = 0;
+      attempt.firstAt = Date.now();
+    }
 
     const [rows] = await db.query(`SELECT Password FROM ${table} WHERE ${pk} = ?`, [id]);
     if (rows.length === 0) {
@@ -204,13 +251,33 @@ exports.changePassword = async (req, res, next) => {
     const verified = await verifyPassword(oldPassword, rows[0].Password);
     const oldOk = verified === true || (verified && verified.ok);
     if (!oldOk) {
+      attempt.count += 1;
+      if (attempt.count >= 5) {
+        attempt.lockedUntil = Date.now() + 15 * 60 * 1000;
+        attempt.count = 0;
+      }
+      failedAttempts.set(key, attempt);
       return res.status(401).json({ error: 'Current password is incorrect' });
+    }
+    failedAttempts.delete(key);
+
+    // New password must not equal the current one and must meet minimum strength.
+    if (String(newPassword) === String(oldPassword)) {
+      return res.status(400).json({ error: 'New password must be different from the current password' });
+    }
+    if (!/[A-Za-z]/.test(newPassword) || !/\d/.test(newPassword)) {
+      return res.status(400).json({ error: 'New password must contain at least one letter and one number' });
     }
 
     // Store the new password hashed (+ pepper), never in plain text.
     const hashed = await hashPassword(newPassword);
     await db.query(`UPDATE ${table} SET Password = ? WHERE ${pk} = ?`, [hashed, id]);
-    res.json({ message: 'Password updated successfully' });
+
+    // Security: a password change invalidates every existing session.
+    const revoked = await sessionStore.revokeAllSessions(userType, id);
+    clearRefreshCookie(res);
+
+    res.json({ message: 'Password updated successfully. Please log in again.', sessionsRevoked: revoked });
   } catch (err) {
     next(err);
   }
@@ -254,10 +321,143 @@ exports.updateProfile = async (req, res, next) => {
   }
 };
 
-exports.logout = (req, res) => {
-  res.json({ message: 'Logged out successfully' });
+exports.logout = async (req, res, next) => {
+  try {
+    // Revoke the server-side session so the refresh cookie becomes useless.
+    const raw = req.cookies && req.cookies[REFRESH_COOKIE];
+    if (raw) {
+      await sessionStore.revokeByRawToken(raw);
+    }
+    clearRefreshCookie(res);
+    res.json({ message: 'Logged out successfully' });
+  } catch (err) {
+    next(err);
+  }
 };
+
+// Issue a fresh access token from the httpOnly refresh cookie (rotating the refresh token).
+exports.refresh = async (req, res, next) => {
+  try {
+    const raw = req.cookies && req.cookies[REFRESH_COOKIE];
+    const row = await sessionStore.findSession(raw);
+
+    if (!row) {
+      clearRefreshCookie(res);
+      return res.status(401).json({ error: 'Invalid or expired session' });
+    }
+
+    // Reuse of an already-rotated token is treated as theft — revoke everything.
+    if (raw && row.Replaced_By) {
+      await sessionStore.revokeAllSessions(row.User_Type, row.User_ID);
+      clearRefreshCookie(res);
+      return res.status(401).json({ error: 'Session reuse detected; all sessions revoked' });
+    }
+
+    await sessionStore.touchSession(row.Token_ID);
+
+    // Look up the current role/name so the new access token is accurate.
+    const isGuest = row.User_Type === 'Guest';
+    const table = isGuest ? 'Guest' : 'Employee';
+    const pk = isGuest ? 'Guest_ID' : 'Employee_ID';
+    const [users] = await db.query(
+      `SELECT ${pk} AS id, Full_Name AS name, ${isGuest ? "Email" : "Username, Email, Role, Designation"} FROM ${table} WHERE ${pk} = ?`,
+      [row.User_ID]
+    );
+    if (users.length === 0) {
+      await sessionStore.revokeByRawToken(raw);
+      clearRefreshCookie(res);
+      return res.status(401).json({ error: 'Account no longer exists' });
+    }
+
+    const u = users[0];
+    const role = isGuest ? 'Guest' : (u.Role || u.Designation || 'Receptionist');
+    const token = issueToken(u.id, role, {
+      username: isGuest ? (u.Email || '') : (u.Username || u.Email),
+      name: u.name
+    });
+
+    // Rotate: revoke this refresh token, issue a new one.
+    const next = await sessionStore.rotateSession(row, req.headers['user-agent'], req.ip);
+    setRefreshCookie(res, next.raw, next.expires);
+
+    res.json({
+      token,
+      user: { id: u.id, role, name: u.name, username: isGuest ? (u.Email || '') : (u.Username || u.Email) }
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// List the logged-in user's active sessions (other devices).
 
 exports.getMe = (req, res) => {
   res.json({ user: req.user });
+};
+
+// List the logged-in user's active sessions (other devices).
+exports.listSessions = async (req, res, next) => {
+  try {
+    const isGuest = String(req.user.role).toLowerCase() === 'guest';
+    const sessions = await sessionStore.listSessions(
+      isGuest ? 'Guest' : 'Employee', req.user.id
+    );
+    // Flag the session matching the current refresh cookie.
+    const currentRaw = req.cookies && req.cookies[REFRESH_COOKIE];
+    let currentId = null;
+    if (currentRaw) {
+      const row = await sessionStore.findSession(currentRaw);
+      currentId = row ? row.Token_ID : null;
+    }
+    res.json({
+      sessions: sessions.map((s) => ({
+        id: s.Token_ID,
+        device: s.User_Agent,
+        ip: s.IP_Address,
+        created: s.Created_At,
+        lastUsed: s.Last_Used_At,
+        expires: s.Expires_At,
+        current: s.Token_ID === currentId
+      }))
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// Revoke one of the user's own sessions.
+exports.revokeSession = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const isGuest = String(req.user.role).toLowerCase() === 'guest';
+    const revoked = await sessionStore.revokeSessionById(
+      id, isGuest ? 'Guest' : 'Employee', req.user.id
+    );
+    if (!revoked) {
+      return res.status(404).json({ error: 'Session not found or already revoked' });
+    }
+    // If the user revoked their own current session, drop the cookie too.
+    const currentRaw = req.cookies && req.cookies[REFRESH_COOKIE];
+    if (currentRaw) {
+      const row = await sessionStore.findSession(currentRaw);
+      if (!row) clearRefreshCookie(res);
+    }
+    res.json({ message: 'Session revoked' });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// Revoke every active session of the logged-in user ("log out everywhere").
+exports.revokeAllSessions = async (req, res, next) => {
+  try {
+    const isGuest = String(req.user.role).toLowerCase() === 'guest';
+    const count = await sessionStore.revokeAllSessions(
+      isGuest ? 'Guest' : 'Employee', req.user.id
+    );
+    clearRefreshCookie(res);
+    res.json({ message: `Revoked ${count} session(s)` });
+  } catch (err) {
+    next(err);
+  }
 };
