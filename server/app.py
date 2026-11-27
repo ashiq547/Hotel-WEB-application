@@ -11,7 +11,7 @@ from db import get_db
 from auth_api import router as auth_router
 from api import router as operations_router
 
-app = FastAPI(title='Hotel Management System API', version='2.0.0', redirect_slashes=False)
+app = FastAPI(title='Hotel Management System API', version='2.0.0', redirect_slashes=True)
 app.add_middleware(CORSMiddleware, allow_origins=os.getenv('CORS_ORIGINS', 'http://localhost:3000,http://localhost:5173').split(','),
                    allow_credentials=True, allow_methods=['*'], allow_headers=['*'])
 
@@ -42,12 +42,6 @@ def health():
 
 app.include_router(auth_router)
 app.include_router(operations_router)
-
-# Accept both trailing-slash forms without redirecting POST bodies.
-for route in list(app.routes):
-    if route.path.startswith('/api/') and not route.path.endswith('/'):
-        app.add_api_route(route.path + '/', route.endpoint, methods=route.methods,
-                          status_code=route.status_code, include_in_schema=False)
 
 if __name__ == '__main__':
     import uvicorn
