@@ -1,7 +1,7 @@
 import axios, { AxiosError } from 'axios';
 
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: 'https://hotel-api-pearl.vercel.app/api',
   withCredentials: true, // send the httpOnly refresh cookie
   headers: {
     'Content-Type': 'application/json'
