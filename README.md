@@ -4,6 +4,8 @@ A full-stack hotel management and guest reservation application built with React
 
 The application provides separate guest and staff experiences. Guests can browse hotels and rooms, register, make reservations, view their stays, order services, and manage their profiles. Staff can manage hotels, rooms, employees, reservations, services, bills, reports, and role-based access.
 
+> **Documentation note:** The PRD, SRS, and TDD in `docs/` are original planning documents and do not fully reflect the current application. For example, the TDD proposes MongoDB, while the implemented application uses MySQL. This README describes the current implementation.
+
 ## Features
 
 - Guest registration and login
@@ -49,7 +51,7 @@ Hotel-WEB-application/
 │   ├── scripts/            # Database initialization utilities
 │   └── utils/              # RBAC, password, session, and account helpers
 ├── database/               # Database SQL resources
-├── docs/                   # Project requirements and design documents
+├── docs/                   # Original planning documents (see documentation note above)
 ├── Hotel_Management_System.sql
 ├── package.json            # Root development scripts
 └── vercel.json             # Frontend Vercel configuration
