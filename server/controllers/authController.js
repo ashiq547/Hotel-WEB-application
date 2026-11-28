@@ -3,6 +3,7 @@ const db = require('../config/db');
 const sessionStore = require('../utils/sessionStore');
 const userAccounts = require('../utils/userAccounts');
 const auditLog = require('../utils/auditLog');
+const { getLoginLockout } = require('../utils/loginProtection');
 const {
   JWT_SECRET,
   TOKEN_TTL,
@@ -18,7 +19,7 @@ const {
  * - Passwords are hashed with bcrypt (+ server-side pepper), never stored in plain text.
  * - Access tokens are signed JWTs with a short lifetime (<= 15 min), containing user id and role.
  * - No hardcoded credentials, no plaintext fallback passwords, no bypass shortcuts.
- * - Failed logins always return 401 with a generic message.
+ * - Failed logins return a generic 401; repeated failures are temporarily blocked.
  */
 
 const GENERIC_ERROR = 'Invalid credentials';
@@ -55,6 +56,11 @@ exports.login = async (req, res, next) => {
 
     const inputUser = String(username).trim();
     const inputPass = String(password);
+    const lockout = await getLoginLockout(req, inputUser);
+    if (lockout.locked) {
+      res.set('Retry-After', String(lockout.retryAfterSeconds));
+      return res.status(429).json({ error: 'Too many failed login attempts. Try again later.' });
+    }
 
     // Look the employee up by username or email, then verify the password hash in code.
     const [employees] = await db.query(
@@ -151,6 +157,11 @@ exports.guestLogin = async (req, res, next) => {
 
     const inputUser = String(emailOrUsername).trim();
     const inputPass = String(password);
+    const lockout = await getLoginLockout(req, inputUser);
+    if (lockout.locked) {
+      res.set('Retry-After', String(lockout.retryAfterSeconds));
+      return res.status(429).json({ error: 'Too many failed login attempts. Try again later.' });
+    }
 
     const [guests] = await db.query(
       `SELECT Guest_ID, Full_Name, Phone_Number, Email, Username, Password

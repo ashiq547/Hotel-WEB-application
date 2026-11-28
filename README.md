@@ -10,6 +10,7 @@ The application provides separate guest and staff experiences. Guests can browse
 - Staff login with Admin, Manager, and Receptionist roles
 - JWT authentication with secure refresh sessions
 - Role-based access control, revocable access/refresh sessions, and session management
+- Database-backed login lockout after 5 failed attempts for an account or 20 from an IP within 15 minutes
 - Admin dashboard for user moderation, audit/security review, content moderation, and CSV export
 - Hotel and room browsing
 - Reservation creation and status management
@@ -168,6 +169,7 @@ The database initializer creates Hotel 1 as a shared group:
 | Employee 3 (Admin) | Manager member | Member actions plus room/reservation management, service assignment, room deletion, and hotel detail edits; cannot rename/delete the hotel or manage members |
 
 New guest, staff, and password-change credentials must be at least 12 characters and include at least one letter and one number.
+Hotel owners can review the permission matrix and change an existing member's Member/Manager role in the hotel member screen.
 
 ## Application Pages
 
@@ -211,7 +213,7 @@ The backend exposes APIs under `/api`:
 The frontend sends its short-lived access token as a Bearer authorization header. Refresh tokens are stored in an HTTP-only cookie.
 
 Admin endpoints under `/api/users` include `/audit`, `/security`, `/content`, `/bulk`, and `/export/{users,records,activity}`. User detail endpoints are `/api/users/{guest|employee}/:id`.
-Hotel owners can review and manage group members through `/api/hotels/:id/members`; the current user's group roles are returned by `/api/users/me/permissions`.
+Hotel owners can review and manage group members through `/api/hotels/:id/members`; `PUT /api/hotels/:id/members/:employeeId` changes an existing member's role. The current user's group roles are returned by `/api/users/me/permissions`.
 
 ## Root npm Scripts
 

@@ -206,6 +206,27 @@ exports.addMember = async (req, res, next) => {
   }
 };
 
+exports.updateMemberRole = async (req, res, next) => {
+  try {
+    const { id, employeeId } = req.params;
+    if (!await isHotelOwner(id, req.user.id)) {
+      return res.status(403).json({ error: 'Only the hotel owner can manage members' });
+    }
+    const { memberRole } = req.body;
+    if (!['Member', 'Manager'].includes(memberRole)) {
+      return res.status(400).json({ error: 'memberRole must be Member or Manager' });
+    }
+
+    const updated = await rbac.updateHotelMemberRole(id, employeeId, memberRole);
+    if (!updated) {
+      return res.status(404).json({ error: 'Membership not found' });
+    }
+    res.json({ message: 'Member role updated' });
+  } catch (err) {
+    next(err);
+  }
+};
+
 // Remove a member (owner only — permission enforced by the route)
 exports.removeMember = async (req, res, next) => {
   try {

@@ -385,6 +385,16 @@ async function addHotelMember(hotelId, employeeId, memberRole, addedBy) {
   );
 }
 
+/** Update an existing member's hotel role. */
+async function updateHotelMemberRole(hotelId, employeeId, memberRole) {
+  await ensureMemberTable();
+  const [result] = await db.query(
+    'UPDATE Hotel_Member SET Member_Role = ? WHERE Hotel_ID = ? AND Employee_ID = ?',
+    [memberRole, hotelId, employeeId]
+  );
+  return result.affectedRows > 0;
+}
+
 /** Remove a member. Returns true when a row was removed. */
 async function removeHotelMember(hotelId, employeeId) {
   await ensureMemberTable();
@@ -421,6 +431,7 @@ module.exports = {
   hotelPermission,
   listHotelMembers,
   addHotelMember,
+  updateHotelMemberRole,
   removeHotelMember,
   memberOfHotels
 };

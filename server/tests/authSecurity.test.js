@@ -6,7 +6,8 @@ const state = {
   banned: false,
   queries: [],
   revoked: null,
-  sessionActive: true
+  sessionActive: true,
+  loginLockout: { locked: false, retryAfterSeconds: 0 }
 };
 
 const db = {
@@ -68,6 +69,11 @@ mockModule('../config/db', db);
 mockModule('../utils/userAccounts', userAccounts);
 mockModule('../utils/sessionStore', sessionStore);
 mockModule('../utils/passwordSecurity', passwordSecurity);
+mockModule('../utils/loginProtection', {
+  async getLoginLockout() {
+    return state.loginLockout;
+  }
+});
 
 const { authenticateToken } = require('../middleware/auth');
 const authController = require('../controllers/authController');
@@ -79,8 +85,13 @@ function response() {
   return {
     statusCode: 200,
     body: null,
+    headers: {},
     cookie() { return this; },
     clearCookie() { return this; },
+    set(name, value) {
+      this.headers[name] = value;
+      return this;
+    },
     status(code) {
       this.statusCode = code;
       return this;
@@ -142,6 +153,23 @@ test('profile reads reject a different account id', async () => {
 
   assert.equal(res.statusCode, 403);
   assert.equal(state.queries.length, 0);
+});
+
+test('staff login is blocked before credential lookup when the account is locked', async () => {
+  state.queries.length = 0;
+  state.loginLockout = { locked: true, retryAfterSeconds: 300 };
+  const res = response();
+
+  await authController.login(
+    { body: { username: 'staff', password: 'bad-password' }, ip: '127.0.0.1', headers: {} },
+    res,
+    (err) => { throw err; }
+  );
+
+  assert.equal(res.statusCode, 429);
+  assert.equal(res.headers['Retry-After'], '300');
+  assert.equal(state.queries.length, 0);
+  state.loginLockout = { locked: false, retryAfterSeconds: 0 };
 });
 
 test('guest profile, reservation, and service reads stay within the authenticated guest', async () => {

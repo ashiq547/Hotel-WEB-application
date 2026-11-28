@@ -27,7 +27,7 @@ const API_ENDPOINTS = [
   ['GET', '/api/auth/sessions', 'List the current user sessions'],
   ['GET / POST', '/api/hotels', 'List hotels or create a hotel'],
   ['GET / PUT / DELETE', '/api/hotels/:id', 'Read or manage a hotel; owner-only actions are enforced'],
-  ['GET / POST / DELETE', '/api/hotels/:id/members', 'View or manage hotel membership'],
+  ['GET / POST / PUT / DELETE', '/api/hotels/:id/members', 'View or manage hotel membership and roles'],
   ['GET / POST / PUT / DELETE', '/api/rooms', 'Browse and manage rooms'],
   ['GET / POST / PUT / DELETE', '/api/reservations', 'Browse and manage reservations'],
   ['GET / POST / PUT / DELETE', '/api/services', 'Browse and manage services'],

@@ -33,8 +33,10 @@ export const HotelsPage: React.FC = () => {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
   const [selectedMemberRole, setSelectedMemberRole] = useState<'Member' | 'Manager'>('Member');
+  const [memberRoleDrafts, setMemberRoleDrafts] = useState<Record<number, 'Member' | 'Manager'>>({});
   const [membersLoading, setMembersLoading] = useState(false);
   const [savingMember, setSavingMember] = useState(false);
+  const [updatingMemberId, setUpdatingMemberId] = useState<number | null>(null);
 
   // Guest Booking Modal State
   const [guestBookingModalOpen, setGuestBookingModalOpen] = useState(false);
@@ -108,13 +110,19 @@ export const HotelsPage: React.FC = () => {
       api.get(`/hotels/${hotelId}/members`),
       api.get('/employees')
     ]);
-    setMembers(memberResponse.data.members);
+    const memberList = memberResponse.data.members as Array<{ Employee_ID: number; Member_Role: string; Full_Name: string }>;
+    setMembers(memberList);
+    setMemberRoleDrafts(memberList.reduce<Record<number, 'Member' | 'Manager'>>((drafts, member) => {
+      drafts[member.Employee_ID] = member.Member_Role === 'Manager' ? 'Manager' : 'Member';
+      return drafts;
+    }, {}));
     setEmployees(employeeResponse.data);
   };
 
   const openMembersModal = async (hotel: Hotel) => {
     setMemberHotel(hotel);
     setMembers([]);
+    setMemberRoleDrafts({});
     setMembersLoading(true);
     setSelectedEmployeeId('');
     setSelectedMemberRole('Member');
@@ -153,6 +161,21 @@ export const HotelsPage: React.FC = () => {
       await fetchMembers(memberHotel.Hotel_ID);
     } catch (err: any) {
       alert(err.response?.data?.error || 'Failed to remove hotel member');
+    }
+  };
+
+  const handleUpdateMemberRole = async (employeeId: number) => {
+    if (!memberHotel || !memberRoleDrafts[employeeId]) return;
+    setUpdatingMemberId(employeeId);
+    try {
+      await api.put(`/hotels/${memberHotel.Hotel_ID}/members/${employeeId}`, {
+        memberRole: memberRoleDrafts[employeeId]
+      });
+      await fetchMembers(memberHotel.Hotel_ID);
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Failed to update member role');
+    } finally {
+      setUpdatingMemberId(null);
     }
   };
 
@@ -582,6 +605,41 @@ export const HotelsPage: React.FC = () => {
               <div className="py-6 flex justify-center"><CircleNotch size={20} className="animate-spin" /></div>
             ) : (
               <>
+                <section className="space-y-2">
+                  <h4 className="text-xs font-bold uppercase tracking-wide text-acc-600 dark:text-acc-300">Permission guide</h4>
+                  <div className="overflow-x-auto border border-acc-200 dark:border-acc-700 rounded">
+                    <table className="w-full text-[11px] text-left">
+                      <thead className="bg-acc-50 dark:bg-acc-800">
+                        <tr>
+                          <th className="p-2">Action</th>
+                          <th className="p-2">Member</th>
+                          <th className="p-2">Manager</th>
+                          <th className="p-2">Owner</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr className="border-t border-acc-200 dark:border-acc-700">
+                          <td className="p-2">Create/update rooms; create reservations</td>
+                          <td className="p-2">Yes</td><td className="p-2">Yes</td><td className="p-2">Yes</td>
+                        </tr>
+                        <tr className="border-t border-acc-200 dark:border-acc-700">
+                          <td className="p-2">Manage reservations; delete rooms; assign services</td>
+                          <td className="p-2">No</td><td className="p-2">Yes</td><td className="p-2">Yes</td>
+                        </tr>
+                        <tr className="border-t border-acc-200 dark:border-acc-700">
+                          <td className="p-2">Edit hotel details (except rename)</td>
+                          <td className="p-2">No</td><td className="p-2">Yes</td><td className="p-2">Yes</td>
+                        </tr>
+                        <tr className="border-t border-acc-200 dark:border-acc-700">
+                          <td className="p-2">Rename/delete hotel; manage members</td>
+                          <td className="p-2">No</td><td className="p-2">No</td><td className="p-2">Yes</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
+
+                <h4 className="text-xs font-bold uppercase tracking-wide text-acc-600 dark:text-acc-300">Group members</h4>
                 <ul className="space-y-2 max-h-48 overflow-y-auto">
                   {members.length === 0 ? (
                     <li className="text-xs text-acc-500">No members have been added to this group.</li>
@@ -589,15 +647,37 @@ export const HotelsPage: React.FC = () => {
                     <li key={member.Employee_ID} className="flex items-center justify-between gap-2 border border-acc-200 dark:border-acc-700 rounded p-2">
                       <div>
                         <p className="text-xs font-semibold">{member.Full_Name}</p>
-                        <p className="text-[11px] text-acc-500">Employee #{member.Employee_ID} · {member.Member_Role}</p>
+                        <p className="text-[11px] text-acc-500">Employee #{member.Employee_ID}</p>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveMember(member.Employee_ID)}
-                        className="px-2 py-1 text-[11px] text-red-600 border border-red-300 rounded"
-                      >
-                        Remove
-                      </button>
+                      <div className="flex items-center gap-1">
+                        <select
+                          aria-label={`Role for ${member.Full_Name}`}
+                          value={memberRoleDrafts[member.Employee_ID] || 'Member'}
+                          onChange={(event) => setMemberRoleDrafts((drafts) => ({
+                            ...drafts,
+                            [member.Employee_ID]: event.target.value as 'Member' | 'Manager'
+                          }))}
+                          className="px-2 py-1 bg-acc-50 dark:bg-acc-800 border border-acc-300 dark:border-acc-700 rounded text-[11px]"
+                        >
+                          <option value="Member">Member</option>
+                          <option value="Manager">Manager</option>
+                        </select>
+                        <button
+                          type="button"
+                          disabled={updatingMemberId === member.Employee_ID || memberRoleDrafts[member.Employee_ID] === member.Member_Role}
+                          onClick={() => handleUpdateMemberRole(member.Employee_ID)}
+                          className="px-2 py-1 text-[11px] border border-acc-300 rounded disabled:opacity-50"
+                        >
+                          {updatingMemberId === member.Employee_ID ? 'Saving...' : 'Save role'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveMember(member.Employee_ID)}
+                          className="px-2 py-1 text-[11px] text-red-600 border border-red-300 rounded"
+                        >
+                          Remove
+                        </button>
+                      </div>
                     </li>
                   ))}
                 </ul>

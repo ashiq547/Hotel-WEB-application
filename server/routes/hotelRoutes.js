@@ -24,6 +24,9 @@ router.get('/:id/members', authenticateToken,
 router.post('/:id/members', authenticateToken,
   rbac.requireAnyPermission(P.HOTEL_READ_MEMBERS, P.ROOM_UPDATE_OWNED),
   hotelController.addMember);
+router.put('/:id/members/:employeeId', authenticateToken,
+  rbac.requireAnyPermission(P.HOTEL_READ_MEMBERS, P.ROOM_UPDATE_OWNED),
+  hotelController.updateMemberRole);
 router.delete('/:id/members/:employeeId', authenticateToken,
   rbac.requireAnyPermission(P.HOTEL_READ_MEMBERS, P.ROOM_UPDATE_OWNED),
   hotelController.removeMember);
