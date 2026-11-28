@@ -21,15 +21,18 @@ async function initDb() {
     const demoPasswordNames = [
       'DEMO_GUEST_PASSWORD',
       'DEMO_GUEST_ALT_PASSWORD',
-      'DEMO_ADMIN_PASSWORD',
-      'DEMO_SECOND_ADMIN_PASSWORD',
       'DEMO_RECEPTIONIST_PASSWORD'
     ];
     const missingDemoPasswords = demoPasswordNames.filter((name) =>
       typeof process.env[name] !== 'string' || process.env[name].length < 12
     );
+    for (const name of ['DEMO_ADMIN_PASSWORD', 'DEMO_SECOND_ADMIN_PASSWORD']) {
+      if (typeof process.env[name] !== 'string' || process.env[name].length === 0) {
+        missingDemoPasswords.push(name);
+      }
+    }
     if (missingDemoPasswords.length) {
-      throw new Error(`Set passwords of at least 12 characters for: ${missingDemoPasswords.join(', ')}`);
+      throw new Error(`Set missing demo passwords (non-admin passwords must be at least 12 characters): ${missingDemoPasswords.join(', ')}`);
     }
 
     const connection = await mysql.createConnection({

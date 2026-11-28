@@ -23,9 +23,15 @@ let refreshing: Promise<string> | null = null;
 
 /** Remove stored session artifacts (called on refresh failure / logout). */
 export function clearSession() {
+  const hadSession = !!(
+    localStorage.getItem('hms_token') ||
+    localStorage.getItem('hms_user')
+  );
   localStorage.removeItem('hms_token');
   localStorage.removeItem('hms_user');
-  window.dispatchEvent(new Event('hms:session-expired'));
+  if (hadSession) {
+    window.dispatchEvent(new Event('hms:session-expired'));
+  }
 }
 
 /** Try to get a fresh access token via the httpOnly refresh cookie. */
