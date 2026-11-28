@@ -14,12 +14,23 @@ const jwt = require('jsonwebtoken');
 const BCRYPT_ROUNDS = parseInt(process.env.BCRYPT_ROUNDS || '10', 10);
 const TOKEN_TTL = process.env.JWT_EXPIRES_IN || '15m';
 
-const JWT_SECRET = process.env.JWT_SECRET || (process.env.NODE_ENV === 'production' ? undefined : 'dev_only_insecure_jwt_secret_change_me');
-const PEPPER = process.env.PEPPER || process.env.JWT_SECRET || 'dev_only_insecure_pepper_change_me';
+const JWT_SECRET = process.env.JWT_SECRET;
+const PEPPER = process.env.PEPPER;
 
-// Fail fast in production if the secret is not configured through the environment.
-if (!JWT_SECRET && process.env.NODE_ENV === 'production') {
-  throw new Error('JWT_SECRET environment variable must be set');
+const ttlMatch = /^(\d+)(s|m|h|d)$/.exec(TOKEN_TTL);
+const ttlSeconds = ttlMatch
+  ? Number(ttlMatch[1]) * ({ s: 1, m: 60, h: 3600, d: 86400 })[ttlMatch[2]]
+  : NaN;
+
+if (!Number.isFinite(ttlSeconds) || ttlSeconds < 1 || ttlSeconds > 15 * 60) {
+  throw new Error('JWT_EXPIRES_IN must be a duration of 15 minutes or less');
+}
+
+if (!JWT_SECRET || JWT_SECRET.length < 32) {
+  throw new Error('JWT_SECRET must be set to at least 32 characters');
+}
+if (!PEPPER || PEPPER.length < 32) {
+  throw new Error('PEPPER must be set to at least 32 characters');
 }
 
 /** Hash a plain password with bcrypt + pepper. */
@@ -42,12 +53,8 @@ async function verifyPassword(plain, stored) {
 
   // Legacy plain-text / non-bcrypt stored value
   if (stored === String(plain)) {
-    try {
-      const upgraded = await hashPassword(plain);
-      return { ok: true, upgraded };
-    } catch {
-      return { ok: true };
-    }
+    const upgraded = await hashPassword(plain);
+    return { ok: true, upgraded };
   }
   return false;
 }

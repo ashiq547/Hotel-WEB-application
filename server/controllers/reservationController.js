@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const rbac = require('../utils/rbac');
 
 const mapResFields = (r) => {
   if (!r) return r;
@@ -12,9 +13,20 @@ const mapResFields = (r) => {
   };
 };
 
+async function hasHotelAccess(req, hotelId, { allowAdmin = false } = {}) {
+  if (!rbac.isStaff(req)) return true;
+  if (allowAdmin && req.rbac && req.rbac.role === 'Admin') return true;
+  return await rbac.isHotelOwner(hotelId, req.user.id) ||
+    !!(await rbac.isHotelMember(hotelId, req.user.id));
+}
+
 exports.getAllReservations = async (req, res, next) => {
   try {
     const { status, guestId, hotelId } = req.query;
+    if (rbac.isStaff(req) && req.rbac && req.rbac.role !== 'Admin') {
+      await rbac.ensureHotelOwnerColumn();
+      await rbac.memberOfHotels(req.user.id);
+    }
     let query = `
       SELECT r.*, 
              g.Full_Name, g.Phone_Number, g.Email,
@@ -31,18 +43,31 @@ exports.getAllReservations = async (req, res, next) => {
       WHERE 1=1
     `;
     const params = [];
+    const own = rbac.ownershipFilter(req, 'r.Guest_ID');
+    query += own.clause;
+    params.push(...own.params);
 
     if (status) {
       query += ' AND r.Reservation_Status = ?';
       params.push(status);
     }
-    if (guestId) {
+    if (guestId && rbac.isStaff(req)) {
       query += ' AND r.Guest_ID = ?';
       params.push(guestId);
     }
     if (hotelId) {
       query += ' AND rm.Hotel_ID = ?';
       params.push(hotelId);
+    }
+    if (rbac.isStaff(req) && req.rbac && req.rbac.role !== 'Admin') {
+      query += ` AND (
+        h.Owner_Employee_ID = ?
+        OR EXISTS (
+          SELECT 1 FROM Hotel_Member hm
+          WHERE hm.Hotel_ID = h.Hotel_ID AND hm.Employee_ID = ?
+        )
+      )`;
+      params.push(req.user.id, req.user.id);
     }
 
     query += ' ORDER BY r.Reservation_ID DESC';
@@ -61,7 +86,7 @@ exports.getReservationById = async (req, res, next) => {
       SELECT r.*, 
              g.Full_Name, g.Phone_Number, g.Email, g.Identification_Number,
              rm.Room_Number, rm.Room_Type, rm.Nightly_Rate,
-             h.Hotel_Name, h.City,
+             h.Hotel_Name, h.City, h.Hotel_ID,
              DATEDIFF(r.Check_Out_Date, r.Check_In_Date) as Total_Nights,
              (DATEDIFF(r.Check_Out_Date, r.Check_In_Date) * rm.Nightly_Rate) as Room_Charge,
              b.Bill_ID, b.Payment_Status, (b.Total_Amount + b.Taxes - b.Discounts) as Final_Amount
@@ -76,6 +101,12 @@ exports.getReservationById = async (req, res, next) => {
     if (reservations.length === 0) {
       return res.status(404).json({ error: 'Reservation not found' });
     }
+    if (!rbac.isStaff(req) && Number(reservations[0].Guest_ID) !== Number(req.user.id)) {
+      return res.status(404).json({ error: 'Reservation not found' });
+    }
+    if (!await hasHotelAccess(req, reservations[0].Hotel_ID, { allowAdmin: true })) {
+      return res.status(404).json({ error: 'Reservation not found' });
+    }
     res.json(mapResFields(reservations[0]));
   } catch (err) {
     next(err);
@@ -84,7 +115,8 @@ exports.getReservationById = async (req, res, next) => {
 
 exports.createReservation = async (req, res, next) => {
   try {
-    const { Guest_ID, Room_ID, Check_In_Date, Check_Out_Date, Number_of_Guests } = req.body;
+    const { Room_ID, Check_In_Date, Check_Out_Date, Number_of_Guests } = req.body;
+    const Guest_ID = rbac.isStaff(req) ? req.body.Guest_ID : req.user.id;
 
     if (!Guest_ID || !Room_ID || !Check_In_Date || !Check_Out_Date) {
       return res.status(400).json({ error: 'Guest, Room, Check In, and Check Out dates are required' });
@@ -105,9 +137,12 @@ exports.createReservation = async (req, res, next) => {
     }
 
     // Check Room Availability
-    const [rooms] = await db.query('SELECT Availability_Status, Nightly_Rate FROM Room WHERE Room_ID = ?', [Room_ID]);
+    const [rooms] = await db.query('SELECT Availability_Status, Nightly_Rate, Hotel_ID FROM Room WHERE Room_ID = ?', [Room_ID]);
     if (rooms.length === 0) {
       return res.status(404).json({ error: 'Room not found' });
+    }
+    if (!await hasHotelAccess(req, rooms[0].Hotel_ID)) {
+      return res.status(404).json({ error: 'Hotel not found' });
     }
     if (rooms[0].Availability_Status !== 'Available') {
       return res.status(400).json({ error: `Room is currently ${rooms[0].Availability_Status}` });
@@ -157,6 +192,11 @@ exports.updateReservation = async (req, res, next) => {
     const currentStatus = existing[0].Reservation_Status;
     const newStatus = Reservation_Status || currentStatus;
     const roomId = existing[0].Room_ID;
+    const [[room]] = await db.query('SELECT Hotel_ID FROM Room WHERE Room_ID = ?', [roomId]);
+    if (!room || (rbac.isStaff(req) &&
+        !await rbac.hotelPermission(room.Hotel_ID, req.user.id, 'reservation:update'))) {
+      return res.status(404).json({ error: 'Reservation not found' });
+    }
 
     await db.query(
       `UPDATE Reservation SET 
@@ -204,6 +244,11 @@ exports.deleteReservation = async (req, res, next) => {
     }
 
     const roomId = existing[0].Room_ID;
+    const [[room]] = await db.query('SELECT Hotel_ID FROM Room WHERE Room_ID = ?', [roomId]);
+    if (!room || (rbac.isStaff(req) &&
+        !await rbac.hotelPermission(room.Hotel_ID, req.user.id, 'reservation:delete'))) {
+      return res.status(404).json({ error: 'Reservation not found' });
+    }
 
     await db.query('DELETE FROM Reservation WHERE Reservation_ID = ?', [id]);
     await db.query(`UPDATE Room SET Availability_Status = 'Available' WHERE Room_ID = ?`, [roomId]);

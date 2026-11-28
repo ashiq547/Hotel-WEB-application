@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import api from '../services/api';
-import { Service, ServiceRecord, Guest } from '../types';
+import { Service, ServiceRecord, Reservation } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { Plus, BellRinging, UserPlus, PencilSimple, Trash } from '@phosphor-icons/react';
 
@@ -8,7 +8,7 @@ export const ServicesPage: React.FC = () => {
   const { user } = useAuth();
   const [services, setServices] = useState<Service[]>([]);
   const [records, setRecords] = useState<ServiceRecord[]>([]);
-  const [guests, setGuests] = useState<Guest[]>([]);
+  const [reservations, setReservations] = useState<Reservation[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Modals
@@ -23,6 +23,7 @@ export const ServicesPage: React.FC = () => {
 
   const [assignForm, setAssignForm] = useState({
     Guest_ID: 1,
+    Reservation_ID: 0,
     Service_ID: 1,
     Quantity: 1,
     Service_Date: new Date().toISOString().split('T')[0]
@@ -31,20 +32,34 @@ export const ServicesPage: React.FC = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [svcRes, recRes, gstRes] = await Promise.all([
+      const [svcRes, recRes, reservationRes, permissionRes] = await Promise.all([
         api.get('/services'),
         api.get('/services/records'),
-        api.get('/guests')
+        api.get('/reservations'),
+        api.get('/users/me/permissions')
       ]);
       setServices(svcRes.data);
       setRecords(recRes.data);
-      setGuests(gstRes.data);
+      const assignableHotels = new Set<number>(
+        (permissionRes.data.hotelAccess || [])
+          .filter((access: { Is_Owner: boolean; Member_Role: string | null }) =>
+            access.Is_Owner || access.Member_Role === 'Manager')
+          .map((access: { Hotel_ID: number }) => Number(access.Hotel_ID))
+      );
+      const assignableReservations = reservationRes.data.filter((reservation: Reservation) =>
+        assignableHotels.has(Number(reservation.Hotel_ID))
+      );
+      setReservations(assignableReservations);
 
       if (svcRes.data.length > 0) {
         setAssignForm(prev => ({ ...prev, Service_ID: svcRes.data[0].Service_ID }));
       }
-      if (gstRes.data.length > 0) {
-        setAssignForm(prev => ({ ...prev, Guest_ID: gstRes.data[0].Guest_ID }));
+      if (assignableReservations.length > 0) {
+        setAssignForm(prev => ({
+          ...prev,
+          Reservation_ID: assignableReservations[0].Reservation_ID,
+          Guest_ID: assignableReservations[0].Guest_ID
+        }));
       }
     } catch (err) {
       console.error('Failed to load services data', err);
@@ -55,7 +70,7 @@ export const ServicesPage: React.FC = () => {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [user?.id]);
 
   const handleCreateService = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,7 +104,8 @@ export const ServicesPage: React.FC = () => {
     }
   };
 
-  const canEdit = user?.role === 'Admin' || user?.role === 'Manager' || user?.role === 'Receptionist';
+  const canManageCatalog = user?.role === 'Admin' || user?.role === 'Manager';
+  const canAssignServices = canManageCatalog || user?.role === 'Receptionist';
 
   return (
     <div className="space-y-6">
@@ -104,22 +120,26 @@ export const ServicesPage: React.FC = () => {
           </p>
         </div>
 
-        {canEdit && (
+        {(canManageCatalog || (canAssignServices && reservations.length > 0)) && (
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setAssignModalOpen(true)}
-              className="flex items-center gap-2 px-3 py-2 border border-acc-300 dark:border-acc-700 bg-white dark:bg-acc-900 text-acc-900 dark:text-acc-100 font-semibold text-xs rounded hover:bg-acc-100 transition-colors"
-            >
-              <UserPlus size={16} />
-              <span>Assign Service to Guest</span>
-            </button>
-            <button
-              onClick={() => setServiceModalOpen(true)}
-              className="flex items-center gap-2 px-3 py-2 bg-acc-950 hover:bg-acc-800 dark:bg-brand-500 dark:hover:bg-brand-600 text-white dark:text-acc-950 font-semibold text-xs rounded transition-colors"
-            >
-              <Plus size={16} />
-              <span>Add Service Item</span>
-            </button>
+            {canAssignServices && reservations.length > 0 && (
+              <button
+                onClick={() => setAssignModalOpen(true)}
+                className="flex items-center gap-2 px-3 py-2 border border-acc-300 dark:border-acc-700 bg-white dark:bg-acc-900 text-acc-900 dark:text-acc-100 font-semibold text-xs rounded hover:bg-acc-100 transition-colors"
+              >
+                <UserPlus size={16} />
+                <span>Assign Service</span>
+              </button>
+            )}
+            {canManageCatalog && (
+              <button
+                onClick={() => setServiceModalOpen(true)}
+                className="flex items-center gap-2 px-3 py-2 bg-acc-950 hover:bg-acc-800 dark:bg-brand-500 dark:hover:bg-brand-600 text-white dark:text-acc-950 font-semibold text-xs rounded transition-colors"
+              >
+                <Plus size={16} />
+                <span>Add Service Item</span>
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -279,18 +299,31 @@ export const ServicesPage: React.FC = () => {
 
             <form onSubmit={handleAssignService} className="space-y-3">
               <div>
-                <label className="block text-xs font-medium mb-1">Guest *</label>
+                <label className="block text-xs font-medium mb-1">Reservation *</label>
                 <select
-                  value={assignForm.Guest_ID}
-                  onChange={(e) => setAssignForm({ ...assignForm, Guest_ID: parseInt(e.target.value) })}
+                  required
+                  value={assignForm.Reservation_ID}
+                  onChange={(e) => {
+                    const reservation = reservations.find((item) => item.Reservation_ID === Number(e.target.value));
+                    if (reservation) {
+                      setAssignForm({
+                        ...assignForm,
+                        Reservation_ID: reservation.Reservation_ID,
+                        Guest_ID: reservation.Guest_ID
+                      });
+                    }
+                  }}
                   className="w-full px-3 py-1.5 bg-acc-50 dark:bg-acc-800 border border-acc-300 dark:border-acc-700 rounded text-xs font-mono"
                 >
-                  {guests.map(g => (
-                    <option key={g.Guest_ID} value={g.Guest_ID}>
-                      {g.First_Name} {g.Last_Name} (#{g.Guest_ID})
+                  {reservations.map((reservation) => (
+                    <option key={reservation.Reservation_ID} value={reservation.Reservation_ID}>
+                      #{reservation.Reservation_ID} — {reservation.Full_Name || `Guest #${reservation.Guest_ID}`} · {reservation.Hotel_Name}
                     </option>
                   ))}
                 </select>
+                {reservations.length === 0 && (
+                  <p className="mt-1 text-[11px] text-acc-500">No reservations are available for service assignment.</p>
+                )}
               </div>
 
               <div>
@@ -340,6 +373,7 @@ export const ServicesPage: React.FC = () => {
                 </button>
                 <button
                   type="submit"
+                  disabled={reservations.length === 0 || services.length === 0}
                   className="px-4 py-1.5 bg-acc-950 text-white dark:bg-brand-500 dark:text-acc-950 font-semibold text-xs rounded"
                 >
                   Confirm & Charge

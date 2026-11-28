@@ -1,5 +1,16 @@
 const db = require('../config/db');
 const { hashPassword } = require('../utils/passwordSecurity');
+const rbac = require('../utils/rbac');
+
+async function canReadGuest(req, guestId) {
+  if (req.user.type === 'Guest' && Number(req.user.id) === Number(guestId)) return true;
+  return req.user.type === 'Employee' && rbac.hasPermission(
+    'Employee',
+    req.user.id,
+    req.user.role,
+    rbac.PERMISSIONS.GUEST_READ_ALL
+  );
+}
 
 const mapGuestFields = (g) => {
   if (!g) return g;
@@ -56,6 +67,9 @@ exports.getAllGuests = async (req, res, next) => {
 exports.getGuestById = async (req, res, next) => {
   try {
     const { id } = req.params;
+    if (!(await canReadGuest(req, id))) {
+      return res.status(404).json({ error: 'Guest not found' });
+    }
     const [guests] = await db.query(`
       SELECT g.Guest_ID, g.Full_Name, g.Phone_Number, g.Email, g.Address, g.Nationality,
              g.Identification_Number, g.Username
@@ -76,6 +90,9 @@ exports.getGuestById = async (req, res, next) => {
 exports.getGuestProfile = async (req, res, next) => {
   try {
     const { id } = req.params;
+    if (!(await canReadGuest(req, id))) {
+      return res.status(404).json({ error: 'Guest profile not found' });
+    }
 
     // 1. Guest personal details from Guest table
     const [guests] = await db.query(`
@@ -198,6 +215,10 @@ exports.createGuest = async (req, res, next) => {
     if (!guestFullName || !Phone_Number || !Identification_Number) {
       return res.status(400).json({ error: 'Full Name, Phone Number, and National ID / Passport are required' });
     }
+    if (typeof Password !== 'string' || Password.length < 12 ||
+        !/[A-Za-z]/.test(Password) || !/\d/.test(Password)) {
+      return res.status(400).json({ error: 'Password must be at least 12 characters and contain a letter and a number' });
+    }
 
     if (Username) {
       const [existingUser] = await db.query('SELECT Guest_ID FROM Guest WHERE LOWER(Username) = LOWER(?)', [Username.trim()]);
@@ -226,7 +247,7 @@ exports.createGuest = async (req, res, next) => {
     const [result] = await db.query(
       `INSERT INTO Guest (Full_Name, Phone_Number, Email, Address, Nationality, Identification_Number, Username, Password)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [guestFullName, Phone_Number, Email || null, Address || null, Nationality || 'Bangladeshi', Identification_Number, Username ? Username.trim() : null, await hashPassword(Password || 'password')]
+      [guestFullName, Phone_Number, Email || null, Address || null, Nationality || 'Bangladeshi', Identification_Number, Username ? Username.trim() : null, await hashPassword(Password)]
     );
 
     const newGuestId = result.insertId;

@@ -91,8 +91,8 @@ export const ProfilePage: React.FC = () => {
       setPwFeedback({ type: 'error', msg: 'Please fill in all password fields.' });
       return;
     }
-    if (newPassword.length < 6) {
-      setPwFeedback({ type: 'error', msg: 'New password must be at least 6 characters long.' });
+    if (newPassword.length < 12 || !/[A-Za-z]/.test(newPassword) || !/\d/.test(newPassword)) {
+      setPwFeedback({ type: 'error', msg: 'Password must be at least 12 characters and contain a letter and a number.' });
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -103,8 +103,6 @@ export const ProfilePage: React.FC = () => {
     setChanging(true);
     try {
       const res = await api.post('/auth/change-password', {
-        id: user?.id,
-        role,
         oldPassword,
         newPassword
       });
@@ -136,7 +134,7 @@ export const ProfilePage: React.FC = () => {
     }
     setSavingName(true);
     try {
-      await api.post('/auth/update-profile', { id: user?.id, role, name: newName });
+      await api.post('/auth/update-profile', { name: newName });
       refreshName(newName);
       setNameFeedback({ type: 'success', msg: 'Name updated successfully.' });
       setEditingName(false);
@@ -172,7 +170,7 @@ export const ProfilePage: React.FC = () => {
         reader.onerror = () => reject(new Error('Failed to read file'));
         reader.readAsDataURL(file);
       });
-      await api.post('/auth/update-profile', { id: user?.id, role, image: dataUrl });
+      await api.post('/auth/update-profile', { image: dataUrl });
       setProfile((p: any) => ({ ...(p || {}), Profile_Image: dataUrl }));
       setNameFeedback({ type: 'success', msg: 'Profile image updated successfully.' });
     } catch (err: any) {
@@ -420,8 +418,9 @@ export const ProfilePage: React.FC = () => {
                 <input
                   type={showNew ? 'text' : 'password'}
                   value={newPassword}
+                  minLength={12}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Min. 6 characters"
+                  placeholder="12+ characters with a letter and number"
                   className={inputCls}
                   autoComplete="new-password"
                 />

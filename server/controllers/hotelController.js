@@ -1,5 +1,12 @@
 const db = require('../config/db');
 const rbac = require('../utils/rbac');
+async function ensureOwnerColumn() {
+  await rbac.ensureHotelOwnerColumn();
+}
+
+async function isHotelOwner(hotelId, employeeId) {
+  return rbac.isHotelOwner(hotelId, employeeId);
+}
 
 // Column sizes from the Hotel table (Image_Url is added by scripts/initDb.js)
 const FIELD_LIMITS = { Hotel_Name: 100, Address: 255, City: 100, Contact_Number: 20, Image_Url: 500 };
@@ -26,7 +33,8 @@ function validateHotelInput(body, { requireName }) {
 exports.getAllHotels = async (req, res, next) => {
   try {
     const [hotels] = await db.query(`
-      SELECT h.*, 
+      SELECT h.Hotel_ID, h.Hotel_Name, h.Address, h.City, h.Contact_Number,
+             h.Star_Rating, h.Image_Url,
              COUNT(DISTINCT r.Room_ID) as Total_Rooms,
              COUNT(DISTINCT e.Employee_ID) as Total_Employees
       FROM Hotel h
@@ -44,7 +52,10 @@ exports.getAllHotels = async (req, res, next) => {
 exports.getHotelById = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const [hotels] = await db.query('SELECT * FROM Hotel WHERE Hotel_ID = ?', [id]);
+    const [hotels] = await db.query(
+      'SELECT Hotel_ID, Hotel_Name, Address, City, Contact_Number, Star_Rating, Image_Url FROM Hotel WHERE Hotel_ID = ?',
+      [id]
+    );
     if (hotels.length === 0) {
       return res.status(404).json({ error: 'Hotel not found' });
     }
@@ -58,6 +69,7 @@ exports.getHotelById = async (req, res, next) => {
 
 exports.createHotel = async (req, res, next) => {
   try {
+    await ensureOwnerColumn();
     const { Hotel_Name, Address, City, Contact_Number, Star_Rating, Image_Url } = req.body;
     const validationError = validateHotelInput(req.body, { requireName: true });
     if (validationError) {
@@ -65,18 +77,22 @@ exports.createHotel = async (req, res, next) => {
     }
 
     const [result] = await db.query(
-      'INSERT INTO Hotel (Hotel_Name, Address, City, Contact_Number, Star_Rating, Image_Url) VALUES (?, ?, ?, ?, ?, ?)',
+      'INSERT INTO Hotel (Hotel_Name, Address, City, Contact_Number, Star_Rating, Image_Url, Owner_Employee_ID) VALUES (?, ?, ?, ?, ?, ?, ?)',
       [
         Hotel_Name.trim(),
         Address || null,
         City || 'Dhaka',
         Contact_Number || null,
         Star_Rating || 4,
-        Image_Url || 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80'
+        Image_Url || 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80',
+        req.user.id
       ]
     );
 
-    const [newHotel] = await db.query('SELECT * FROM Hotel WHERE Hotel_ID = ?', [result.insertId]);
+    const [newHotel] = await db.query(
+      'SELECT Hotel_ID, Hotel_Name, Address, City, Contact_Number, Star_Rating, Image_Url FROM Hotel WHERE Hotel_ID = ?',
+      [result.insertId]
+    );
     res.status(201).json(newHotel[0]);
   } catch (err) {
     next(err);
@@ -85,6 +101,7 @@ exports.createHotel = async (req, res, next) => {
 
 exports.updateHotel = async (req, res, next) => {
   try {
+    await ensureOwnerColumn();
     const { id } = req.params;
     const { Hotel_Name, Address, City, Contact_Number, Star_Rating, Image_Url } = req.body;
     const validationError = validateHotelInput(req.body, { requireName: false });
@@ -97,15 +114,17 @@ exports.updateHotel = async (req, res, next) => {
       return res.status(404).json({ error: 'Hotel not found' });
     }
 
-    // FINE-GRAINED SHARED-RESOURCE RULE: only the owner (Admin) or a
-    // Manager-level member of THIS hotel may update/rename it.
-    const isGuest = String(req.user.role).toLowerCase() === 'guest';
+    // Hotel managers may edit operational details, but only its owner may rename it.
+    const isGuest = req.user.type === 'Guest';
     if (!isGuest) {
       const memberRole = await rbac.isHotelMember(id, req.user.id);
-      const isOwner = req.rbac && req.rbac.role === 'Admin';
+      const isOwner = await isHotelOwner(id, req.user.id);
+      if (Hotel_Name && Hotel_Name !== existing[0].Hotel_Name && !isOwner) {
+        return res.status(403).json({ error: 'Only the hotel owner can rename this hotel' });
+      }
       if (!isOwner && memberRole !== 'Manager') {
         return memberRole
-          ? res.status(403).json({ error: 'Only the hotel owner or a manager-member can update this hotel' })
+          ? res.status(403).json({ error: 'Only the hotel owner or a manager-member can update hotel details' })
           : res.status(404).json({ error: 'Hotel not found' });
       }
     } else {
@@ -125,7 +144,10 @@ exports.updateHotel = async (req, res, next) => {
       ]
     );
 
-    const [updated] = await db.query('SELECT * FROM Hotel WHERE Hotel_ID = ?', [id]);
+    const [updated] = await db.query(
+      'SELECT Hotel_ID, Hotel_Name, Address, City, Contact_Number, Star_Rating, Image_Url FROM Hotel WHERE Hotel_ID = ?',
+      [id]
+    );
     res.json(updated[0]);
   } catch (err) {
     next(err);
@@ -138,8 +160,12 @@ exports.updateHotel = async (req, res, next) => {
 exports.listMembers = async (req, res, next) => {
   try {
     const { id } = req.params;
+    await ensureOwnerColumn();
     const [hotels] = await db.query('SELECT Hotel_ID FROM Hotel WHERE Hotel_ID = ?', [id]);
     if (hotels.length === 0) {
+      return res.status(404).json({ error: 'Hotel not found' });
+    }
+    if (!await isHotelOwner(id, req.user.id) && !await rbac.isHotelMember(id, req.user.id)) {
       return res.status(404).json({ error: 'Hotel not found' });
     }
     const members = await rbac.listHotelMembers(id);
@@ -153,6 +179,9 @@ exports.listMembers = async (req, res, next) => {
 exports.addMember = async (req, res, next) => {
   try {
     const { id } = req.params;
+    if (!await isHotelOwner(id, req.user.id)) {
+      return res.status(403).json({ error: 'Only the hotel owner can manage members' });
+    }
     const { employeeId, memberRole } = req.body;
     if (!employeeId) {
       return res.status(400).json({ error: 'employeeId is required' });
@@ -181,6 +210,9 @@ exports.addMember = async (req, res, next) => {
 exports.removeMember = async (req, res, next) => {
   try {
     const { id, employeeId } = req.params;
+    if (!await isHotelOwner(id, req.user.id)) {
+      return res.status(403).json({ error: 'Only the hotel owner can manage members' });
+    }
     const removed = await rbac.removeHotelMember(id, employeeId);
     if (!removed) {
       return res.status(404).json({ error: 'Membership not found' });
@@ -197,6 +229,9 @@ exports.deleteHotel = async (req, res, next) => {
   const { id } = req.params;
   let connection;
   try {
+    if (!await isHotelOwner(id, req.user.id)) {
+      return res.status(403).json({ error: 'Only the hotel owner can delete this hotel' });
+    }
     const [existing] = await db.query('SELECT Hotel_Name FROM Hotel WHERE Hotel_ID = ?', [id]);
     if (existing.length === 0) {
       return res.status(404).json({ error: 'Hotel not found' });

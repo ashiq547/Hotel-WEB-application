@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import api from '../services/api';
 import { DashboardSummary } from '../types';
+import { useAuth } from '../context/AuthContext';
 import { 
   Buildings, 
   Bed, 
@@ -26,7 +27,18 @@ import {
 } from 'recharts';
 
 export const DashboardPage: React.FC = () => {
-  const [data, setData] = useState<{ summary: DashboardSummary; charts: any } | null>(null);
+  const { user } = useAuth();
+  const [data, setData] = useState<{
+    summary: DashboardSummary;
+    charts: any;
+    adminOverview?: {
+      totalUsers: number;
+      bannedUsers: number;
+      totalRecords: number;
+      totalGroups: number;
+      newUsers7d: number;
+    } | null;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchDashboard = async () => {
@@ -79,6 +91,26 @@ export const DashboardPage: React.FC = () => {
           <span>Refresh Data</span>
         </button>
       </div>
+
+      {user?.role === 'Admin' && data?.adminOverview && (
+        <section>
+          <h2 className="text-xs font-mono uppercase tracking-wider text-acc-500 mb-3">Administration Overview</h2>
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+            {[
+              ['Users', data.adminOverview.totalUsers],
+              ['Banned users', data.adminOverview.bannedUsers],
+              ['Reservations', data.adminOverview.totalRecords],
+              ['Hotels / groups', data.adminOverview.totalGroups],
+              ['New in 7 days', data.adminOverview.newUsers7d]
+            ].map(([label, value]) => (
+              <div key={label} className="panel-card p-4">
+                <p className="text-[11px] font-mono uppercase tracking-wider text-acc-500">{label}</p>
+                <p className="text-2xl font-bold font-mono text-acc-950 dark:text-acc-50 mt-1">{value}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Summary KPI Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

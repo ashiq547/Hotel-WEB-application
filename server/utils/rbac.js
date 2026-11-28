@@ -10,8 +10,9 @@
  *   dependencies/decorators on routes) — never scattered role checks.
  * - Ownership is enforced with assertOwnership / ownershipFilter helpers.
  * - Hotel membership gives fine-grained permissions inside shared hotels:
- *   members can create/update rooms and reservations; only the hotel owner
- *   (admin) can delete, rename or manage members.
+ *   members can create/update rooms and reservations; managers can assign
+ *   services and manage reservations; only the hotel owner can delete, rename
+ *   the hotel or manage members.
  */
 const userAccounts = require('./userAccounts');
 const db = require('../config/db');
@@ -185,7 +186,7 @@ function requirePermission(permission) {
   return async (req, res, next) => {
     try {
       if (!req.user) return res.status(401).json({ error: 'Authentication required' });
-      const userType = String(req.user.role).toLowerCase() === 'guest' ? 'Guest' : 'Employee';
+      const userType = req.user.type;
       if (await isBanned(userType, req.user.id)) {
         return res.status(403).json({ error: 'Your account is banned' });
       }
@@ -207,7 +208,7 @@ function requireAnyPermission(...permissions) {
   return async (req, res, next) => {
     try {
       if (!req.user) return res.status(401).json({ error: 'Authentication required' });
-      const userType = String(req.user.role).toLowerCase() === 'guest' ? 'Guest' : 'Employee';
+      const userType = req.user.type;
       if (await isBanned(userType, req.user.id)) {
         return res.status(403).json({ error: 'Your account is banned' });
       }
@@ -232,7 +233,7 @@ function requireAnyPermission(...permissions) {
 
 /** Admin/staff (non-guest) users bypass ownership (they have '*:any' rights). */
 function isStaff(req) {
-  return req.user && String(req.user.role).toLowerCase() !== 'guest';
+  return req.user && req.user.type === 'Employee';
 }
 
 /**
@@ -269,6 +270,36 @@ function ownershipFilter(req, column = 'r.Guest_ID') {
 // ---------------------------------------------------------------------------
 
 let memberTableReady = false;
+let ownerColumnReady = false;
+
+async function ensureHotelOwnerColumn() {
+  if (ownerColumnReady) return;
+  const [columns] = await db.query("SHOW COLUMNS FROM Hotel LIKE 'Owner_Employee_ID'");
+  if (!columns.length) {
+    await db.query('ALTER TABLE Hotel ADD COLUMN Owner_Employee_ID INT NULL');
+  }
+  await db.query(`
+    UPDATE Hotel h
+    SET Owner_Employee_ID = (
+      SELECT e.Employee_ID FROM Employee e
+      WHERE e.Hotel_ID = h.Hotel_ID
+      ORDER BY CASE WHEN e.Role = 'Admin' THEN 0 ELSE 1 END, e.Employee_ID
+      LIMIT 1
+    )
+    WHERE Owner_Employee_ID IS NULL
+  `);
+  ownerColumnReady = true;
+}
+
+async function isHotelOwner(hotelId, employeeId) {
+  await ensureHotelOwnerColumn();
+  const [rows] = await db.query(
+    'SELECT Hotel_ID FROM Hotel WHERE Hotel_ID = ? AND Owner_Employee_ID = ?',
+    [hotelId, employeeId]
+  );
+  return rows.length > 0;
+}
+
 async function ensureMemberTable() {
   if (memberTableReady) return;
   await db.query(`
@@ -297,28 +328,33 @@ async function isHotelMember(hotelId, employeeId) {
 
 /**
  * Permission inside a hotel:
- * - Member: can create rooms/reservations and update things in that hotel.
- * - Manager-member: additionally can update hotel details.
- * - Only the hotel owner (Admin role) can delete / rename / manage members.
+ * - Member: can create/update rooms and create reservations.
+ * - Manager-member: can also manage reservations, delete rooms, edit hotel
+ *   details and assign services.
+ * - Only the hotel owner can delete/rename the hotel or manage members.
  */
 async function hotelPermission(hotelId, employeeId, action) {
   const memberRole = await isHotelMember(hotelId, employeeId);
   const isMember = !!memberRole;
+  const isOwner = await isHotelOwner(hotelId, employeeId);
 
   switch (action) {
     case 'room:create':
     case 'room:update':
     case 'reservation:create':
+      return isMember || isOwner; // any member or owner
     case 'reservation:update':
-      return isMember; // any member
+    case 'reservation:delete':
+    case 'service:assign':
+      return isOwner || (isMember && memberRole === 'Manager');
     case 'room:delete':
-      return isMember && memberRole === 'Manager'; // manager-members only
+      return isOwner || (isMember && memberRole === 'Manager');
     case 'hotel:rename':
-    case 'hotel:update':
-      return isMember && memberRole === 'Manager';
     case 'hotel:delete':
     case 'members:manage':
-      return false; // owner only, checked separately via USER_* / HOTEL_* perms
+      return isOwner;
+    case 'hotel:update':
+      return isOwner || (isMember && memberRole === 'Manager');
     default:
       return false;
   }
@@ -380,6 +416,8 @@ module.exports = {
   ownershipFilter,
   isStaff,
   isHotelMember,
+  ensureHotelOwnerColumn,
+  isHotelOwner,
   hotelPermission,
   listHotelMembers,
   addHotelMember,

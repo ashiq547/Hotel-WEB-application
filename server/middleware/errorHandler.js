@@ -6,9 +6,13 @@ function errorHandler(err, req, res, next) {
     return res.status(400).json({ error: err.message });
   }
 
-  const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
+  const statusCode = Number.isInteger(err.statusCode) && err.statusCode >= 400 && err.statusCode <= 599
+    ? err.statusCode
+    : Number.isInteger(err.status) && err.status >= 400 && err.status <= 599
+      ? err.status
+      : 500;
   res.status(statusCode).json({
-    error: err.message || 'Internal Server Error'
+    error: statusCode >= 500 ? 'Internal Server Error' : (err.message || 'Request failed')
   });
 }
 

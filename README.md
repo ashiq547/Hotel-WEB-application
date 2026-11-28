@@ -9,7 +9,8 @@ The application provides separate guest and staff experiences. Guests can browse
 - Guest registration and login
 - Staff login with Admin, Manager, and Receptionist roles
 - JWT authentication with secure refresh sessions
-- Role-based access control and session management
+- Role-based access control, revocable access/refresh sessions, and session management
+- Admin dashboard for user moderation, audit/security review, content moderation, and CSV export
 - Hotel and room browsing
 - Reservation creation and status management
 - Guest stay, service, and profile dashboards
@@ -55,7 +56,7 @@ Hotel-WEB-application/
 
 ## Prerequisites
 
-- Node.js 18 or newer
+- Node.js 20.19+ or 22.12+
 - npm
 - MySQL or MariaDB
 
@@ -82,21 +83,30 @@ npm install --prefix server
 
 Ensure MySQL or MariaDB is running. The database is named `Hotel_Management_System` by default.
 
-Create `server/.env`:
+Copy `server/.env.example` to `server/.env` and set your local database credentials:
 
 ```env
 PORT=5000
+NODE_ENV=development
 DB_HOST=localhost
 DB_PORT=3306
 DB_USER=root
 DB_PASSWORD=
 DB_NAME=Hotel_Management_System
 
-JWT_SECRET=replace_with_a_long_random_secret
+JWT_SECRET=
 JWT_EXPIRES_IN=15m
-PEPPER=replace_with_a_long_random_pepper
+PEPPER=
 REFRESH_TTL_DAYS=7
 BCRYPT_ROUNDS=10
+FRONTEND_ORIGINS=http://localhost:3000
+
+# Set private passwords of at least 12 characters before initializing the database.
+DEMO_GUEST_PASSWORD=
+DEMO_GUEST_ALT_PASSWORD=
+DEMO_ADMIN_PASSWORD=
+DEMO_SECOND_ADMIN_PASSWORD=
+DEMO_RECEPTIONIST_PASSWORD=
 ```
 
 Use different, securely generated values for `JWT_SECRET` and `PEPPER` in production.
@@ -126,26 +136,38 @@ The Vite development server proxies `/api` requests to the backend.
 
 ## Seeded Accounts
 
-The database initializer creates these accounts for development and demonstration.
+The database initializer creates these accounts for development and demonstration. The passwords are intentionally not published in this repository; provide demo credentials separately through the instructor submission form.
 
-### Staff accounts
+### Staff account IDs and roles
 
-| Portal | Username | Password | Role |
-|---|---|---|---|
-| `/login` | `admin` | `admin123` | Admin |
-| `/login` | `receptionist` | `admin123` | Receptionist |
-| `/login` | `admin2` | `54321` | Admin |
+| User type | User ID | Role |
+|---|---:|---|
+| Employee | 1 | Admin |
+| Employee | 2 | Receptionist |
+| Employee | 3 | Admin |
 
-### Guest accounts
+### Guest account IDs and roles
 
-| Portal | Username | Password |
+| User type | User ID | Role |
+|---|---:|---|
+| Guest | 1 | Guest |
+| Guest | 2 | Guest |
+| Guest | 3 | Guest |
+| Guest | 4 | Guest |
+
+Sample data includes six hotels, ten rooms, reservations, bills, and services. Demo credentials must be shared privately, not in this README.
+
+### Shared hotel group example
+
+The database initializer creates Hotel 1 as a shared group:
+
+| Member | Group role | Group permissions |
 |---|---|---|
-| `/guest-login` | `tanvir` | `password` |
-| `/guest-login` | `nusrat` | `password` |
-| `/guest-login` | `arif` | `password` |
-| `/guest-login` | `sabbir` | `1234` |
+| Employee 1 (Admin) | Owner | Rename/delete hotel; manage members; full hotel access |
+| Employee 2 (Receptionist) | Member | Create and edit rooms; create reservations; cannot edit/delete reservations or assign services |
+| Employee 3 (Admin) | Manager member | Member actions plus room/reservation management, service assignment, room deletion, and hotel detail edits; cannot rename/delete the hotel or manage members |
 
-Guest login also accepts the seeded email addresses or phone numbers where supported by the login form.
+New guest, staff, and password-change credentials must be at least 12 characters and include at least one letter and one number.
 
 ## Application Pages
 
@@ -165,7 +187,7 @@ Guest login also accepts the seeded email addresses or phone numbers where suppo
 | `/reports` | Admin, Manager, Receptionist |
 | `/settings` | Admin, Manager |
 | `/profile` | Authenticated users |
-| `/users` | Admin |
+| `/users` | Admin (users, activity, security, and content moderation) |
 
 ## REST API
 
@@ -174,6 +196,7 @@ The backend exposes APIs under `/api`:
 | Area | Base path |
 |---|---|
 | Health check | `/api/health` |
+| API documentation | `/api/docs` |
 | Authentication | `/api/auth` |
 | Hotels | `/api/hotels` |
 | Rooms | `/api/rooms` |
@@ -186,6 +209,9 @@ The backend exposes APIs under `/api`:
 | Users | `/api/users` |
 
 The frontend sends its short-lived access token as a Bearer authorization header. Refresh tokens are stored in an HTTP-only cookie.
+
+Admin endpoints under `/api/users` include `/audit`, `/security`, `/content`, `/bulk`, and `/export/{users,records,activity}`. User detail endpoints are `/api/users/{guest|employee}/:id`.
+Hotel owners can review and manage group members through `/api/hotels/:id/members`; the current user's group roles are returned by `/api/users/me/permissions`.
 
 ## Root npm Scripts
 
@@ -205,7 +231,15 @@ npm run build
 
 The built static application is written to `client/dist`.
 
-The included `vercel.json` configures Vercel to build the frontend and route all paths to `index.html`. The Express API must be deployed and reachable separately, or must be configured behind the same hosting environment.
+The root `vercel.json` configures the frontend build and client-side routes. The Express API has a separate Vercel configuration in `server/vercel.json`; deploy it as a second Vercel project with the project root set to `server/`.
+
+For a split deployment, configure:
+
+- **Frontend project:** set `VITE_API_BASE_URL` to the backend URL ending in `/api`, for example `https://your-api.example/api`.
+- **API project:** set `FRONTEND_ORIGINS` to the exact deployed frontend origin (no trailing slash), and configure `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `JWT_SECRET`, and `PEPPER`.
+- **Database:** use a hosted MySQL-compatible database. Local database files or localhost database connections will not persist or be reachable from Vercel.
+
+Production requires random `JWT_SECRET` and `PEPPER` values of at least 32 characters each. Use HTTPS for the deployments; the refresh cookie is configured as secure and cross-site in production. Vercel deployment still requires you to create the projects, configure these environment variables, and provide hosted database credentials.
 
 ## Database
 

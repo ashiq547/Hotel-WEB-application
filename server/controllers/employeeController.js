@@ -1,5 +1,8 @@
 const db = require('../config/db');
 const { hashPassword } = require('../utils/passwordSecurity');
+const userAccounts = require('../utils/userAccounts');
+const sessionStore = require('../utils/sessionStore');
+const auditLog = require('../utils/auditLog');
 
 const mapEmployeeFields = (e) => {
   if (!e) return e;
@@ -56,11 +59,21 @@ exports.createEmployee = async (req, res, next) => {
     const { Full_Name, First_Name, Last_Name, Hotel_ID, Role, Designation, Salary, Joining_Date, Employment_Status, Phone_Number, Email, Username, Password } = req.body;
 
     const empFullName = Full_Name || `${First_Name || ''} ${Last_Name || ''}`.trim();
-    const assignedRole = Role || Designation || 'Receptionist';
+    const assignedRole = Role || 'Receptionist';
     const assignedDesignation = Designation || assignedRole;
 
     if (!empFullName || !Hotel_ID) {
       return res.status(400).json({ error: 'Full Name and Hotel assignment are required' });
+    }
+    if (typeof Password !== 'string' || Password.length < 12 ||
+        !/[A-Za-z]/.test(Password) || !/\d/.test(Password)) {
+      return res.status(400).json({ error: 'Password must be at least 12 characters and contain a letter and a number' });
+    }
+    if (!['Admin', 'Manager', 'Receptionist'].includes(assignedRole)) {
+      return res.status(400).json({ error: 'Role must be Admin, Manager, or Receptionist' });
+    }
+    if (assignedRole !== 'Receptionist' && req.rbac.role !== 'Admin') {
+      return res.status(403).json({ error: 'Only an admin can create admin or manager accounts' });
     }
 
     if (Username) {
@@ -84,7 +97,7 @@ exports.createEmployee = async (req, res, next) => {
         Phone_Number || null,
         Email || null,
         Username ? Username.trim() : null,
-        await hashPassword(Password || 'admin123')
+        await hashPassword(Password)
       ]
     );
 
@@ -114,6 +127,23 @@ exports.updateEmployee = async (req, res, next) => {
     if (existing.length === 0) {
       return res.status(404).json({ error: 'Employee not found' });
     }
+    if (Role !== undefined) {
+      if (!['Admin', 'Manager', 'Receptionist'].includes(Role)) {
+        return res.status(400).json({ error: 'Role must be Admin, Manager, or Receptionist' });
+      }
+      if (Number(req.user.id) === Number(id)) {
+        return res.status(403).json({ error: 'You cannot change your own role' });
+      }
+      if (req.rbac.role !== 'Admin') {
+        return res.status(403).json({ error: 'Only an admin can change employee roles' });
+      }
+    }
+    if (Password && (Password.length < 12 || !/[A-Za-z]/.test(Password) || !/\d/.test(Password))) {
+      return res.status(400).json({ error: 'Password must be at least 12 characters and contain a letter and a number' });
+    }
+    if (Password && (req.rbac.role !== 'Admin' || Number(req.user.id) === Number(id))) {
+      return res.status(403).json({ error: 'Only an admin can reset another employee password; use your profile to change your own' });
+    }
 
     const empFullName = Full_Name || (First_Name || Last_Name ? `${First_Name || ''} ${Last_Name || ''}`.trim() : null);
 
@@ -141,7 +171,7 @@ exports.updateEmployee = async (req, res, next) => {
       [
         Hotel_ID,
         empFullName,
-        Role,
+        Role || null,
         Designation || Role,
         Salary,
         Joining_Date,
@@ -153,6 +183,27 @@ exports.updateEmployee = async (req, res, next) => {
         id
       ]
     );
+    if (Role !== undefined) {
+      await userAccounts.setRole('Employee', Number(id), Role);
+      await sessionStore.revokeAllSessions('Employee', Number(id));
+      await auditLog.record(req, 'role.change', {
+        userType: 'Employee',
+        userId: req.user.id,
+        targetType: 'Employee',
+        targetId: Number(id),
+        details: `Role changed to ${Role}`
+      });
+    }
+    if (Password) {
+      await sessionStore.revokeAllSessions('Employee', Number(id));
+      await auditLog.record(req, 'password.change', {
+        userType: 'Employee',
+        userId: req.user.id,
+        targetType: 'Employee',
+        targetId: Number(id),
+        details: 'Password reset by an administrator'
+      });
+    }
 
     const [updated] = await db.query(`
       SELECT e.Employee_ID, e.Hotel_ID, e.Full_Name, e.Role, e.Designation, e.Salary, e.Joining_Date, e.Employment_Status,
@@ -178,6 +229,7 @@ exports.deleteEmployee = async (req, res, next) => {
     }
 
     await db.query('DELETE FROM Employee WHERE Employee_ID = ?', [id]);
+    await sessionStore.revokeAllSessions('Employee', Number(id));
     res.json({ message: 'Employee deleted successfully', Employee_ID: id });
   } catch (err) {
     next(err);

@@ -1,4 +1,6 @@
 const { verifyAccessToken } = require('../utils/passwordSecurity');
+const userAccounts = require('../utils/userAccounts');
+const sessionStore = require('../utils/sessionStore');
 
 /**
  * Authentication middleware.
@@ -6,7 +8,7 @@ const { verifyAccessToken } = require('../utils/passwordSecurity');
  * - Missing, malformed, tampered, invalid or expired tokens always return 401.
  * - The token payload must contain a user id and role.
  */
-function authenticateToken(req, res, next) {
+async function authenticateToken(req, res, next) {
   const authHeader = req.headers['authorization'] || '';
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : null;
 
@@ -15,13 +17,25 @@ function authenticateToken(req, res, next) {
   }
 
   const user = verifyAccessToken(token);
-  if (!user || user.id === undefined || !user.role) {
+  if (!user || user.id === undefined || !user.role || !Number.isInteger(Number(user.sid)) ||
+      !['Guest', 'Employee'].includes(user.type)) {
     // Covers missing, invalid, tampered and expired tokens alike.
     return res.status(401).json({ error: 'Invalid, tampered or expired token' });
   }
 
-  req.user = user;
-  next();
+  try {
+    if (!await sessionStore.findActiveSession(user.sid, user.type, user.id)) {
+      return res.status(401).json({ error: 'Session is no longer active' });
+    }
+    const role = await userAccounts.getRole(user.type, user.id, user.role);
+    if (await userAccounts.isBanned(user.type, user.id)) {
+      return res.status(403).json({ error: 'Your account is banned' });
+    }
+    req.user = { ...user, role };
+    next();
+  } catch (err) {
+    next(err);
+  }
 }
 
 function authorizeRoles(...allowedRoles) {

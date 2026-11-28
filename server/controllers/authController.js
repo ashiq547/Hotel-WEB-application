@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 const db = require('../config/db');
 const sessionStore = require('../utils/sessionStore');
 const userAccounts = require('../utils/userAccounts');
+const auditLog = require('../utils/auditLog');
 const {
   JWT_SECRET,
   TOKEN_TTL,
@@ -27,14 +28,14 @@ const failedAttempts = new Map();
 setInterval(() => failedAttempts.clear(), 30 * 60 * 1000).unref?.();
 
 /** Issue a short-lived access token containing user id and role. */
-const issueToken = (id, role, extra = {}) =>
-  signAccessToken({ id, role, ...extra });
+const issueToken = (id, role, type, extra = {}) =>
+  signAccessToken({ id, role, type, ...extra });
 
 const REFRESH_COOKIE = 'hms_refresh';
 const COOKIE_OPTS = {
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',
-  sameSite: 'lax',
+  sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
   path: '/api/auth'
 };
 
@@ -64,6 +65,11 @@ exports.login = async (req, res, next) => {
     );
 
     if (employees.length === 0) {
+      await auditLog.record(req, 'login.failed', {
+        userType: 'Employee',
+        attemptHash: auditLog.hashIdentifier(inputUser),
+        details: 'Invalid staff credentials'
+      });
       return res.status(401).json({ error: GENERIC_ERROR });
     }
 
@@ -72,6 +78,12 @@ exports.login = async (req, res, next) => {
     const verified = await verifyPassword(inputPass, emp.Password);
     const ok = verified === true || (verified && verified.ok);
     if (!ok) {
+      await auditLog.record(req, 'login.failed', {
+        userType: 'Employee',
+        userId: emp.Employee_ID,
+        attemptHash: auditLog.hashIdentifier(inputUser),
+        details: 'Invalid staff credentials'
+      });
       return res.status(401).json({ error: GENERIC_ERROR });
     }
 
@@ -87,19 +99,31 @@ exports.login = async (req, res, next) => {
 
     // The DB-stored role (User_Account) is authoritative, falling back to the
     // Employee table's Role column.
-    const dbRole = await userAccounts.getRole('Employee', emp.Employee_ID, null);
-    const role = dbRole && dbRole !== 'Receptionist' ? dbRole : (emp.Role || emp.Designation || 'Receptionist');
-    const token = issueToken(emp.Employee_ID, role, {
-      username: emp.Username || emp.Email,
-      name: emp.Full_Name
-    });
-
+    let account = await userAccounts.getAccount('Employee', emp.Employee_ID, false);
+    if (!account) {
+      account = await userAccounts.getAccount(
+        'Employee',
+        emp.Employee_ID,
+        true,
+        emp.Role || emp.Designation || 'Receptionist'
+      );
+    }
+    const role = account.Role;
     // Start a server-side session (httpOnly refresh cookie)
     const session = await sessionStore.createSession(
       'Employee', emp.Employee_ID,
       req.headers['user-agent'], req.ip
     );
+    const token = issueToken(emp.Employee_ID, role, 'Employee', {
+      sid: session.id,
+      username: emp.Username || emp.Email,
+      name: emp.Full_Name
+    });
     setRefreshCookie(res, session.raw, session.expires);
+    await auditLog.record(req, 'login.success', {
+      userType: 'Employee',
+      userId: emp.Employee_ID
+    });
 
     res.json({
       message: 'Staff login successful',
@@ -136,6 +160,11 @@ exports.guestLogin = async (req, res, next) => {
     );
 
     if (guests.length === 0) {
+      await auditLog.record(req, 'login.failed', {
+        userType: 'Guest',
+        attemptHash: auditLog.hashIdentifier(inputUser),
+        details: 'Invalid guest credentials'
+      });
       return res.status(401).json({ error: GENERIC_ERROR });
     }
 
@@ -144,6 +173,12 @@ exports.guestLogin = async (req, res, next) => {
     const verified = await verifyPassword(inputPass, guest.Password);
     const ok = verified === true || (verified && verified.ok);
     if (!ok) {
+      await auditLog.record(req, 'login.failed', {
+        userType: 'Guest',
+        userId: guest.Guest_ID,
+        attemptHash: auditLog.hashIdentifier(inputUser),
+        details: 'Invalid guest credentials'
+      });
       return res.status(401).json({ error: GENERIC_ERROR });
     }
 
@@ -157,17 +192,21 @@ exports.guestLogin = async (req, res, next) => {
       return res.status(403).json({ error: 'Your account is banned' });
     }
 
-    const token = issueToken(guest.Guest_ID, 'Guest', {
-      username: guest.Email || guest.Phone_Number,
-      name: guest.Full_Name
-    });
-
     // Start a server-side session (httpOnly refresh cookie)
     const session = await sessionStore.createSession(
       'Guest', guest.Guest_ID,
       req.headers['user-agent'], req.ip
     );
+    const token = issueToken(guest.Guest_ID, 'Guest', 'Guest', {
+      sid: session.id,
+      username: guest.Email || guest.Phone_Number,
+      name: guest.Full_Name
+    });
     setRefreshCookie(res, session.raw, session.expires);
+    await auditLog.record(req, 'login.success', {
+      userType: 'Guest',
+      userId: guest.Guest_ID
+    });
 
     res.json({
       message: 'Customer login successful',
@@ -186,18 +225,24 @@ exports.guestLogin = async (req, res, next) => {
 
 // Helper: make sure Profile_Image column exists on both tables
 const ensureImageColumn = async () => {
-  try { await db.query('ALTER TABLE Employee ADD COLUMN Profile_Image LONGTEXT'); } catch (e) { }
-  try { await db.query('ALTER TABLE Guest ADD COLUMN Profile_Image LONGTEXT'); } catch (e) { }
+  for (const table of ['Employee', 'Guest']) {
+    const [columns] = await db.query(`SHOW COLUMNS FROM ${table} LIKE 'Profile_Image'`);
+    if (!columns.length) {
+      await db.query(`ALTER TABLE ${table} ADD COLUMN Profile_Image LONGTEXT`);
+    }
+  }
 };
 
 // Get unified profile info for the logged-in user (staff or guest)
 exports.getProfile = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const role = req.query.role || (req.user && req.user.role) || 'Guest';
+    if (Number(id) !== Number(req.user.id)) {
+      return res.status(403).json({ error: 'You can only view your own profile' });
+    }
     await ensureImageColumn();
 
-    if (String(role).toLowerCase() !== 'guest') {
+    if (req.user.type === 'Employee') {
       const [rows] = await db.query(
         `SELECT Employee_ID AS id, Full_Name AS name, Username, Role, Designation, Email,
                 Joining_Date AS joined, Employment_Status, Profile_Image
@@ -230,15 +275,17 @@ exports.getProfile = async (req, res, next) => {
 // Change password using the old password (works for staff & guests)
 exports.changePassword = async (req, res, next) => {
   try {
-    const { id, role, oldPassword, newPassword } = req.body;
-    if (!id || !oldPassword || !newPassword) {
-      return res.status(400).json({ error: 'id, oldPassword and newPassword are required' });
+    const { oldPassword, newPassword } = req.body;
+    const { id, type } = req.user;
+    if (!oldPassword || !newPassword) {
+      return res.status(400).json({ error: 'oldPassword and newPassword are required' });
     }
-    if (String(newPassword).length < 6) {
-      return res.status(400).json({ error: 'New password must be at least 6 characters long' });
+    if (String(newPassword).length < 12 ||
+        !/[A-Za-z]/.test(newPassword) || !/\d/.test(newPassword)) {
+      return res.status(400).json({ error: 'New password must be at least 12 characters and contain a letter and a number' });
     }
 
-    const isGuest = String(role).toLowerCase() === 'guest';
+    const isGuest = type === 'Guest';
     const table = isGuest ? 'Guest' : 'Employee';
     const pk = isGuest ? 'Guest_ID' : 'Employee_ID';
     const userType = isGuest ? 'Guest' : 'Employee';
@@ -271,6 +318,11 @@ exports.changePassword = async (req, res, next) => {
         attempt.count = 0;
       }
       failedAttempts.set(key, attempt);
+      await auditLog.record(req, 'password.change.failed', {
+        userType,
+        userId: id,
+        details: 'Incorrect current password'
+      });
       return res.status(401).json({ error: 'Current password is incorrect' });
     }
     failedAttempts.delete(key);
@@ -279,10 +331,6 @@ exports.changePassword = async (req, res, next) => {
     if (String(newPassword) === String(oldPassword)) {
       return res.status(400).json({ error: 'New password must be different from the current password' });
     }
-    if (!/[A-Za-z]/.test(newPassword) || !/\d/.test(newPassword)) {
-      return res.status(400).json({ error: 'New password must contain at least one letter and one number' });
-    }
-
     // Store the new password hashed (+ pepper), never in plain text.
     const hashed = await hashPassword(newPassword);
     await db.query(`UPDATE ${table} SET Password = ? WHERE ${pk} = ?`, [hashed, id]);
@@ -290,6 +338,7 @@ exports.changePassword = async (req, res, next) => {
     // Security: a password change invalidates every existing session.
     const revoked = await sessionStore.revokeAllSessions(userType, id);
     clearRefreshCookie(res);
+    await auditLog.record(req, 'password.change', { userType, userId: id });
 
     res.json({ message: 'Password updated successfully. Please log in again.', sessionsRevoked: revoked });
   } catch (err) {
@@ -300,16 +349,13 @@ exports.changePassword = async (req, res, next) => {
 // Update profile: name and/or profile image (base64 data URL or URL string)
 exports.updateProfile = async (req, res, next) => {
   try {
-    const { id, role } = req.body;
     const { name, image } = req.body;
-    if (!id) {
-      return res.status(400).json({ error: 'id is required' });
-    }
+    const { id, type } = req.user;
     if (!name && image === undefined) {
       return res.status(400).json({ error: 'Nothing to update' });
     }
 
-    const isGuest = String(role).toLowerCase() === 'guest';
+    const isGuest = type === 'Guest';
     const table = isGuest ? 'Guest' : 'Employee';
     const pk = isGuest ? 'Guest_ID' : 'Employee_ID';
     const nameCol = 'Full_Name';
@@ -340,7 +386,14 @@ exports.logout = async (req, res, next) => {
     // Revoke the server-side session so the refresh cookie becomes useless.
     const raw = req.cookies && req.cookies[REFRESH_COOKIE];
     if (raw) {
+      const session = await sessionStore.findSession(raw);
       await sessionStore.revokeByRawToken(raw);
+      if (session) {
+        await auditLog.record(req, 'logout', {
+          userType: session.User_Type,
+          userId: session.User_ID
+        });
+      }
     }
     clearRefreshCookie(res);
     res.json({ message: 'Logged out successfully' });
@@ -393,18 +446,24 @@ exports.refresh = async (req, res, next) => {
 
     const u = users[0];
     // DB-stored role is authoritative on refresh too.
-    const dbRole = await userAccounts.getRole(userType, row.User_ID, null);
-    const role = isGuest
-      ? 'Guest'
-      : (dbRole && dbRole !== 'Receptionist' ? dbRole : (u.Role || u.Designation || 'Receptionist'));
-    const token = issueToken(u.id, role, {
-      username: isGuest ? (u.Email || '') : (u.Username || u.Email),
-      name: u.name
-    });
-
+    let account = await userAccounts.getAccount(userType, row.User_ID, false);
+    if (!account) {
+      account = await userAccounts.getAccount(
+        userType,
+        row.User_ID,
+        true,
+        isGuest ? 'Guest' : (u.Role || u.Designation || 'Receptionist')
+      );
+    }
+    const role = account.Role;
     // Rotate: revoke this refresh token, issue a new one.
     const next = await sessionStore.rotateSession(row, req.headers['user-agent'], req.ip);
     setRefreshCookie(res, next.raw, next.expires);
+    const token = issueToken(u.id, role, userType, {
+      sid: next.id,
+      username: isGuest ? (u.Email || '') : (u.Username || u.Email),
+      name: u.name
+    });
 
     res.json({
       token,
@@ -424,7 +483,7 @@ exports.getMe = (req, res) => {
 // List the logged-in user's active sessions (other devices).
 exports.listSessions = async (req, res, next) => {
   try {
-    const isGuest = String(req.user.role).toLowerCase() === 'guest';
+    const isGuest = req.user.type === 'Guest';
     const sessions = await sessionStore.listSessions(
       isGuest ? 'Guest' : 'Employee', req.user.id
     );
@@ -455,7 +514,7 @@ exports.listSessions = async (req, res, next) => {
 exports.revokeSession = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const isGuest = String(req.user.role).toLowerCase() === 'guest';
+    const isGuest = req.user.type === 'Guest';
     const revoked = await sessionStore.revokeSessionById(
       id, isGuest ? 'Guest' : 'Employee', req.user.id
     );
@@ -477,7 +536,7 @@ exports.revokeSession = async (req, res, next) => {
 // Revoke every active session of the logged-in user ("log out everywhere").
 exports.revokeAllSessions = async (req, res, next) => {
   try {
-    const isGuest = String(req.user.role).toLowerCase() === 'guest';
+    const isGuest = req.user.type === 'Guest';
     const count = await sessionStore.revokeAllSessions(
       isGuest ? 'Guest' : 'Employee', req.user.id
     );

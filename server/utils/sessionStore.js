@@ -47,12 +47,23 @@ async function createSession(userType, userId, userAgent, ip) {
   const raw = crypto.randomBytes(32).toString('hex');
   const tokenHash = sha256(raw);
   const expires = new Date(Date.now() + REFRESH_TTL_DAYS * 24 * 60 * 60 * 1000);
-  await db.query(
+  const [result] = await db.query(
     `INSERT INTO Refresh_Token (User_Type, User_ID, Token_Hash, User_Agent, IP_Address, Expires_At)
      VALUES (?, ?, ?, ?, ?, ?)`,
     [userType, userId, tokenHash, String(userAgent || '').slice(0, 255), String(ip || '').slice(0, 64), expires]
   );
-  return { raw, tokenHash, expires };
+  return { id: result.insertId, raw, tokenHash, expires };
+}
+
+async function findActiveSession(sessionId, userType, userId) {
+  await ensureTable();
+  const [rows] = await db.query(
+    `SELECT Token_ID FROM Refresh_Token
+     WHERE Token_ID = ? AND User_Type = ? AND User_ID = ?
+       AND Revoked_At IS NULL AND Expires_At > NOW()`,
+    [sessionId, userType, userId]
+  );
+  return rows.length > 0;
 }
 
 /** Look up a raw refresh token. Returns the row or null when unknown/expired/revoked. */
@@ -132,22 +143,19 @@ async function listSessions(userType, userId) {
 
 /** Touch Last_Used_At when a token is successfully used. */
 async function touchSession(tokenId) {
-  try {
-    await db.query('UPDATE Refresh_Token SET Last_Used_At = NOW() WHERE Token_ID = ?', [tokenId]);
-  } catch (e) { /* non-fatal */ }
+  await db.query('UPDATE Refresh_Token SET Last_Used_At = NOW() WHERE Token_ID = ?', [tokenId]);
 }
 
 /** Delete expired / revoked rows older than 30 days (housekeeping). */
 async function cleanup() {
-  try {
-    await ensureTable();
-    await db.query('DELETE FROM Refresh_Token WHERE Expires_At < NOW() - INTERVAL 30 DAY');
-  } catch (e) { /* non-fatal */ }
+  await ensureTable();
+  await db.query('DELETE FROM Refresh_Token WHERE Expires_At < NOW() - INTERVAL 30 DAY');
 }
 
 module.exports = {
   REFRESH_TTL_DAYS,
   createSession,
+  findActiveSession,
   findSession,
   rotateSession,
   revokeSessionById,

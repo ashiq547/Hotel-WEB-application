@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { User, UserRole } from '../types';
+import { User } from '../types';
 import api, { clearSession as clearStoredSession } from '../services/api';
 
 interface AuthContextType {
@@ -13,7 +13,6 @@ interface AuthContextType {
   guestLogin: (emailOrUsername: string, password: string) => Promise<void>;
   setSession: (token: string, user: User) => void;
   logout: () => Promise<void>;
-  switchRole: (role: UserRole) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -118,15 +117,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     resetState();
   };
 
-  const switchRole = (newRole: UserRole) => {
-    if (!user) return;
-    const updatedUser: User = { ...user, role: newRole };
-    setUser(updatedUser);
-    localStorage.setItem('hms_user', JSON.stringify(updatedUser));
-  };
-
   return (
-    <AuthContext.Provider value={{ user, token, loading, restored, login, guestLogin, setSession, logout, switchRole }}>
+    <AuthContext.Provider value={{ user, token, loading, restored, login, guestLogin, setSession, logout }}>
       {children}
     </AuthContext.Provider>
   );

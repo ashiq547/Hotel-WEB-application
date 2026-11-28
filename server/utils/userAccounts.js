@@ -48,11 +48,11 @@ async function getAccount(userType, userId, createIfMissing = false, defaultRole
   return created[0] || null;
 }
 
-/** Authoritative role for a user (falls back to the token hint if no row exists). */
+/** Authoritative role for a user, creating its account row on first use. */
 async function getRole(userType, userId, tokenHint) {
-  const account = await getAccount(userType, userId);
-  if (account) return account.Role;
-  return tokenHint || (userType === 'Guest' ? 'Guest' : 'Receptionist');
+  const fallbackRole = tokenHint || (userType === 'Guest' ? 'Guest' : 'Receptionist');
+  const account = await getAccount(userType, userId, true, fallbackRole);
+  return account.Role;
 }
 
 /** True if the user is currently banned. */
@@ -95,14 +95,19 @@ async function setRole(userType, userId, newRole) {
 async function listAccounts() {
   await ensureTables();
   const [rows] = await db.query(
-    `SELECT ua.User_Account_ID, ua.User_Type, ua.User_Ref_ID, ua.Role, ua.Banned,
-            ua.Banned_At, ua.Ban_Reason,
-            COALESCE(g.Full_Name, e.Full_Name) AS Name,
-            COALESCE(g.Email, e.Email) AS Email
-     FROM User_Account ua
-     LEFT JOIN Guest g ON ua.User_Type = 'Guest' AND ua.User_Ref_ID = g.Guest_ID
-     LEFT JOIN Employee e ON ua.User_Type = 'Employee' AND ua.User_Ref_ID = e.Employee_ID
-     ORDER BY ua.User_Account_ID DESC`
+    `SELECT ua.User_Account_ID, 'Guest' AS User_Type, g.Guest_ID AS User_Ref_ID,
+            COALESCE(ua.Role, 'Guest') AS Role, COALESCE(ua.Banned, 0) AS Banned,
+            ua.Banned_At, ua.Ban_Reason, g.Full_Name AS Name, g.Email
+     FROM Guest g
+     LEFT JOIN User_Account ua ON ua.User_Type = 'Guest' AND ua.User_Ref_ID = g.Guest_ID
+     UNION ALL
+     SELECT ua.User_Account_ID, 'Employee' AS User_Type, e.Employee_ID AS User_Ref_ID,
+            COALESCE(ua.Role, e.Role, e.Designation, 'Receptionist') AS Role,
+            COALESCE(ua.Banned, 0) AS Banned, ua.Banned_At, ua.Ban_Reason,
+            e.Full_Name AS Name, e.Email
+     FROM Employee e
+     LEFT JOIN User_Account ua ON ua.User_Type = 'Employee' AND ua.User_Ref_ID = e.Employee_ID
+     ORDER BY User_Type ASC, User_Ref_ID ASC`
   );
   return rows;
 }

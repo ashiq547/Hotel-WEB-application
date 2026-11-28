@@ -36,7 +36,22 @@ exports.getDashboardStats = async (req, res, next) => {
       GROUP BY Room_Type
     `);
 
+    let adminOverview = null;
+    if (req.rbac && req.rbac.role === 'Admin') {
+      const [[overview]] = await db.query(`
+        SELECT
+          (SELECT COUNT(*) FROM Guest) + (SELECT COUNT(*) FROM Employee) AS totalUsers,
+          (SELECT COUNT(*) FROM User_Account WHERE Banned = 1) AS bannedUsers,
+          (SELECT COUNT(*) FROM Reservation) AS totalRecords,
+          (SELECT COUNT(*) FROM Hotel) AS totalGroups,
+          (SELECT COUNT(*) FROM Guest WHERE Registration_Date >= DATE_SUB(CURRENT_DATE, INTERVAL 7 DAY)) +
+          (SELECT COUNT(*) FROM Employee WHERE Joining_Date >= DATE_SUB(CURRENT_DATE, INTERVAL 7 DAY)) AS newUsers7d
+      `);
+      adminOverview = overview;
+    }
+
     res.json({
+      adminOverview,
       summary: {
         totalHotels: hotelsCount[0].count,
         totalRooms: roomsCount[0].count,

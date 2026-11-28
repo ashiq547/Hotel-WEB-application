@@ -12,7 +12,8 @@ CREATE TABLE Hotel (
     Address VARCHAR(255),
     City VARCHAR(100),
     Contact_Number VARCHAR(20),
-    Star_Rating TINYINT CHECK (Star_Rating BETWEEN 1 AND 5)
+    Star_Rating TINYINT CHECK (Star_Rating BETWEEN 1 AND 5),
+    Owner_Employee_ID INT NULL
 );
 
 -- =========================================================

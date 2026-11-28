@@ -85,8 +85,9 @@ export const RegisterPage: React.FC = () => {
       return;
     }
 
-    if (!form.Password || form.Password.length < 4) {
-      setErrorMsg('Password must be at least 4 characters long.');
+    if (!form.Password || form.Password.length < 12 ||
+        !/[A-Za-z]/.test(form.Password) || !/\d/.test(form.Password)) {
+      setErrorMsg('Password must be at least 12 characters and contain a letter and a number.');
       return;
     }
 
@@ -252,6 +253,7 @@ export const RegisterPage: React.FC = () => {
               <input
                 type="password"
                 required
+                minLength={12}
                 placeholder="••••••••"
                 value={form.Password}
                 onChange={(e) => setForm({ ...form, Password: e.target.value })}

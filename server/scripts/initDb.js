@@ -1,8 +1,8 @@
 const mysql = require('mysql2/promise');
-const { hashPassword } = require('../utils/passwordSecurity');
 const fs = require('fs');
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '../.env') });
+const { hashPassword } = require('../utils/passwordSecurity');
 
 async function initDb() {
   const host = process.env.DB_HOST || 'localhost';
@@ -14,6 +14,24 @@ async function initDb() {
   console.log(`Connecting to MySQL at ${host}:${port} as ${user}...`);
 
   try {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('Refusing to recreate database tables in production');
+    }
+
+    const demoPasswordNames = [
+      'DEMO_GUEST_PASSWORD',
+      'DEMO_GUEST_ALT_PASSWORD',
+      'DEMO_ADMIN_PASSWORD',
+      'DEMO_SECOND_ADMIN_PASSWORD',
+      'DEMO_RECEPTIONIST_PASSWORD'
+    ];
+    const missingDemoPasswords = demoPasswordNames.filter((name) =>
+      typeof process.env[name] !== 'string' || process.env[name].length < 12
+    );
+    if (missingDemoPasswords.length) {
+      throw new Error(`Set passwords of at least 12 characters for: ${missingDemoPasswords.join(', ')}`);
+    }
+
     const connection = await mysql.createConnection({
       host,
       port,
@@ -74,6 +92,7 @@ async function initDb() {
 
     // Ensure UI enhancement columns exist
     try { await connection.query(`ALTER TABLE Hotel ADD COLUMN Image_Url VARCHAR(500);`); } catch (e) {}
+    try { await connection.query(`ALTER TABLE Hotel ADD COLUMN Owner_Employee_ID INT NULL;`); } catch (e) {}
     try { await connection.query(`ALTER TABLE Room ADD COLUMN Sale_Rate DECIMAL(10,2);`); } catch (e) {}
     try { await connection.query(`ALTER TABLE Room ADD COLUMN Room_Description TEXT;`); } catch (e) {}
     try { await connection.query(`ALTER TABLE Guest ADD COLUMN Username VARCHAR(100) UNIQUE;`); } catch (e) {}
@@ -98,8 +117,8 @@ async function initDb() {
     // Seed Guests directly into Guest table (no Person table)
     // Seed Guests with bcrypt-hashed passwords (never plain text)
     console.log('Seeding Guests and Employees directly into entity tables...');
-    const guestPw = await hashPassword('password');
-    const guestPw2 = await hashPassword('1234');
+    const guestPw = await hashPassword(process.env.DEMO_GUEST_PASSWORD);
+    const guestPw2 = await hashPassword(process.env.DEMO_GUEST_ALT_PASSWORD);
     await connection.query(`
       INSERT INTO Guest (Guest_ID, Full_Name, Phone_Number, Email, Address, Nationality, Identification_Number, Username, Password) VALUES
       (1, 'Tanvir Rahman', '+8801700112233', 'tanvir.rahman@example.com', 'House 42, Road 11, Banani, Dhaka', 'Bangladeshi', 'NID-1994829102938', 'tanvir', ?),
@@ -110,15 +129,34 @@ async function initDb() {
     );
 
     // Seed Employees with bcrypt-hashed passwords (never plain text)
-    const staffPw = await hashPassword('admin123');
-    const staffPw2 = await hashPassword('54321');
+    const adminPw = await hashPassword(process.env.DEMO_ADMIN_PASSWORD);
+    const receptionistPw = await hashPassword(process.env.DEMO_RECEPTIONIST_PASSWORD);
+    const secondAdminPw = await hashPassword(process.env.DEMO_SECOND_ADMIN_PASSWORD);
     await connection.query(`
       INSERT INTO Employee (Employee_ID, Hotel_ID, Full_Name, Role, Designation, Salary, Joining_Date, Employment_Status, Username, Password) VALUES
       (1, 1, 'System Administrator', 'Admin', 'System Admin', 120000.00, '2024-01-01', 'Active', 'admin', ?),
       (2, 1, 'Mahmud Hasan', 'Receptionist', 'Front Desk Executive', 45000.00, '2024-06-15', 'Active', 'receptionist', ?),
       (3, 1, 'Second Administrator', 'Admin', 'System Admin 2', 120000.00, '2024-01-01', 'Active', 'admin2', ?);`,
-      [staffPw, staffPw, staffPw2]
+      [adminPw, receptionistPw, secondAdminPw]
     );
+
+    await connection.query('UPDATE Hotel SET Owner_Employee_ID = 1');
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS Hotel_Member (
+        Member_ID INT AUTO_INCREMENT PRIMARY KEY,
+        Hotel_ID INT NOT NULL,
+        Employee_ID INT NOT NULL,
+        Member_Role VARCHAR(30) NOT NULL DEFAULT 'Member',
+        Added_By INT NULL,
+        Added_At TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY uniq_member (Hotel_ID, Employee_ID)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+    await connection.query(`
+      INSERT INTO Hotel_Member (Hotel_ID, Employee_ID, Member_Role, Added_By) VALUES
+      (1, 2, 'Member', 1),
+      (1, 3, 'Manager', 1)
+    `);
 
     // Seed Rooms across all 6 hotels
     console.log('Seeding Rooms (BDT ৳ rates & sale rates)...');

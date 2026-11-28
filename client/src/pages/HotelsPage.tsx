@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../services/api';
-import { Hotel, Room } from '../types';
+import { Employee, Hotel, Room } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { HotelCardSkeleton } from '../components/SkeletonLoader';
 import { GuestBookingModal } from '../components/GuestBookingModal';
@@ -14,7 +14,8 @@ import {
   MapPin, 
   ArrowRight,
   CircleNotch,
-  Image as ImageIcon
+  Image as ImageIcon,
+  UsersThree
 } from '@phosphor-icons/react';
 
 export const HotelsPage: React.FC = () => {
@@ -26,6 +27,14 @@ export const HotelsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [btnLoading, setBtnLoading] = useState<number | null>(null);
   const [deletingHotelId, setDeletingHotelId] = useState<number | null>(null);
+  const [hotelAccess, setHotelAccess] = useState<Record<number, { memberRole: string | null; isOwner: boolean }>>({});
+  const [memberHotel, setMemberHotel] = useState<Hotel | null>(null);
+  const [members, setMembers] = useState<Array<{ Employee_ID: number; Member_Role: string; Full_Name: string }>>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
+  const [selectedMemberRole, setSelectedMemberRole] = useState<'Member' | 'Manager'>('Member');
+  const [membersLoading, setMembersLoading] = useState(false);
+  const [savingMember, setSavingMember] = useState(false);
 
   // Guest Booking Modal State
   const [guestBookingModalOpen, setGuestBookingModalOpen] = useState(false);
@@ -73,9 +82,84 @@ export const HotelsPage: React.FC = () => {
     }
   };
 
+  const fetchHotelAccess = async () => {
+    if (!user || user.role === 'Guest') {
+      setHotelAccess({});
+      return;
+    }
+    try {
+      const { data } = await api.get('/users/me/permissions');
+      const access: Record<number, { memberRole: string | null; isOwner: boolean }> = {};
+      for (const entry of data.hotelAccess || []) {
+        access[Number(entry.Hotel_ID)] = {
+          memberRole: entry.Member_Role,
+          isOwner: Boolean(entry.Is_Owner)
+        };
+      }
+      setHotelAccess(access);
+    } catch (err) {
+      console.error('Failed to load hotel permissions', err);
+      setHotelAccess({});
+    }
+  };
+
+  const fetchMembers = async (hotelId: number) => {
+    const [memberResponse, employeeResponse] = await Promise.all([
+      api.get(`/hotels/${hotelId}/members`),
+      api.get('/employees')
+    ]);
+    setMembers(memberResponse.data.members);
+    setEmployees(employeeResponse.data);
+  };
+
+  const openMembersModal = async (hotel: Hotel) => {
+    setMemberHotel(hotel);
+    setMembers([]);
+    setMembersLoading(true);
+    setSelectedEmployeeId('');
+    setSelectedMemberRole('Member');
+    try {
+      await fetchMembers(hotel.Hotel_ID);
+    } catch (err: any) {
+      setMemberHotel(null);
+      alert(err.response?.data?.error || 'Failed to load hotel members');
+    } finally {
+      setMembersLoading(false);
+    }
+  };
+
+  const handleAddMember = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!memberHotel || !selectedEmployeeId) return;
+    setSavingMember(true);
+    try {
+      await api.post(`/hotels/${memberHotel.Hotel_ID}/members`, {
+        employeeId: Number(selectedEmployeeId),
+        memberRole: selectedMemberRole
+      });
+      await fetchMembers(memberHotel.Hotel_ID);
+      setSelectedEmployeeId('');
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Failed to add hotel member');
+    } finally {
+      setSavingMember(false);
+    }
+  };
+
+  const handleRemoveMember = async (employeeId: number) => {
+    if (!memberHotel || !confirm('Remove this employee from the hotel group?')) return;
+    try {
+      await api.delete(`/hotels/${memberHotel.Hotel_ID}/members/${employeeId}`);
+      await fetchMembers(memberHotel.Hotel_ID);
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Failed to remove hotel member');
+    }
+  };
+
   useEffect(() => {
     fetchHotels();
-  }, []);
+    fetchHotelAccess();
+  }, [user?.id]);
 
   const openCreateModal = () => {
     setEditingHotel(null);
@@ -113,7 +197,7 @@ export const HotelsPage: React.FC = () => {
         await api.post('/hotels', formData);
       }
       setModalOpen(false);
-      fetchHotels();
+      await Promise.all([fetchHotels(), fetchHotelAccess()]);
     } catch (err: any) {
       alert(err.response?.data?.error || 'Failed to save hotel');
     } finally {
@@ -157,8 +241,7 @@ export const HotelsPage: React.FC = () => {
            (h.City && h.City.toLowerCase().includes(search.toLowerCase()));
   });
 
-  const canEdit = user?.role === 'Admin' || user?.role === 'Manager';
-  const canDelete = user?.role === 'Admin';
+  const canCreate = user?.role === 'Admin' || user?.role === 'Manager';
 
   // Region options come from the hotels in the database, so newly added cities show up
   const cityOptions = Array.from(new Set(hotels.map(h => h.City).filter((c): c is string => !!c))).sort();
@@ -218,7 +301,7 @@ export const HotelsPage: React.FC = () => {
               {search ? `${search}:` : 'All Locations:'} {filteredHotels.length} properties found
             </h2>
           </div>
-          {canEdit && (
+          {canCreate && (
             <button
               onClick={openCreateModal}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-acc-950 text-white dark:bg-brand-500 dark:text-acc-950 font-bold text-xs rounded shadow hover:opacity-90 transition-all"
@@ -244,6 +327,8 @@ export const HotelsPage: React.FC = () => {
           </div>
         ) : (
           filteredHotels.map((h, idx) => {
+            const access = hotelAccess[h.Hotel_ID];
+            const canEditThisHotel = access?.isOwner || access?.memberRole === 'Manager';
             const firstRoom = h.rooms && h.rooms.length > 0 ? h.rooms[0] : null;
             const originalRate = firstRoom ? Number(firstRoom.Nightly_Rate) : 0;
             const saleRate = firstRoom && firstRoom.Sale_Rate ? Number(firstRoom.Sale_Rate) : (originalRate * 0.8);
@@ -332,7 +417,7 @@ export const HotelsPage: React.FC = () => {
                       )}
 
                       <div className="pt-2 flex justify-end gap-2">
-                        {canEdit && (
+                        {canEditThisHotel && (
                           <button
                             onClick={() => openEditModal(h)}
                             className="p-1.5 border border-acc-300 rounded text-xs hover:bg-acc-100"
@@ -341,7 +426,17 @@ export const HotelsPage: React.FC = () => {
                             <PencilSimple size={14} />
                           </button>
                         )}
-                        {canDelete && (
+                        {access?.isOwner && (
+                          <button
+                            onClick={() => openMembersModal(h)}
+                            className="p-1.5 border border-acc-300 rounded text-xs hover:bg-acc-100"
+                            title="Manage hotel members"
+                            aria-label={`Manage members for ${h.Hotel_Name}`}
+                          >
+                            <UsersThree size={14} />
+                          </button>
+                        )}
+                        {access?.isOwner && (
                           <button
                             onClick={() => handleDelete(h)}
                             disabled={deletingHotelId === h.Hotel_ID}
@@ -462,6 +557,85 @@ export const HotelsPage: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {memberHotel && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-acc-900 border border-acc-200 dark:border-acc-700 rounded-lg max-w-lg w-full p-6 shadow-xl space-y-4">
+            <div className="flex items-start justify-between gap-3 border-b border-acc-100 dark:border-acc-800 pb-2">
+              <div>
+                <h3 className="text-base font-bold text-acc-950 dark:text-acc-50">Manage hotel members</h3>
+                <p className="text-xs text-acc-500">{memberHotel.Hotel_Name}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMemberHotel(null)}
+                className="px-2 py-1 border border-acc-300 rounded text-xs"
+              >
+                Close
+              </button>
+            </div>
+
+            {membersLoading ? (
+              <div className="py-6 flex justify-center"><CircleNotch size={20} className="animate-spin" /></div>
+            ) : (
+              <>
+                <ul className="space-y-2 max-h-48 overflow-y-auto">
+                  {members.length === 0 ? (
+                    <li className="text-xs text-acc-500">No members have been added to this group.</li>
+                  ) : members.map((member) => (
+                    <li key={member.Employee_ID} className="flex items-center justify-between gap-2 border border-acc-200 dark:border-acc-700 rounded p-2">
+                      <div>
+                        <p className="text-xs font-semibold">{member.Full_Name}</p>
+                        <p className="text-[11px] text-acc-500">Employee #{member.Employee_ID} · {member.Member_Role}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveMember(member.Employee_ID)}
+                        className="px-2 py-1 text-[11px] text-red-600 border border-red-300 rounded"
+                      >
+                        Remove
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+
+                <form onSubmit={handleAddMember} className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-2 pt-3 border-t border-acc-100 dark:border-acc-800">
+                  <select
+                    required
+                    value={selectedEmployeeId}
+                    onChange={(e) => setSelectedEmployeeId(e.target.value)}
+                    className="px-2 py-1.5 bg-acc-50 dark:bg-acc-800 border border-acc-300 dark:border-acc-700 rounded text-xs"
+                  >
+                    <option value="">Select employee</option>
+                    {employees
+                      .filter((employee) => !members.some((member) => member.Employee_ID === employee.Employee_ID))
+                      .map((employee) => (
+                        <option key={employee.Employee_ID} value={employee.Employee_ID}>
+                          {employee.Full_Name} (#{employee.Employee_ID})
+                        </option>
+                      ))}
+                  </select>
+                  <select
+                    value={selectedMemberRole}
+                    onChange={(e) => setSelectedMemberRole(e.target.value as 'Member' | 'Manager')}
+                    className="px-2 py-1.5 bg-acc-50 dark:bg-acc-800 border border-acc-300 dark:border-acc-700 rounded text-xs"
+                  >
+                    <option value="Member">Member</option>
+                    <option value="Manager">Manager</option>
+                  </select>
+                  <button
+                    type="submit"
+                    disabled={!selectedEmployeeId || savingMember}
+                    className="px-3 py-1.5 bg-acc-950 text-white dark:bg-brand-500 dark:text-acc-950 font-semibold text-xs rounded disabled:opacity-50"
+                  >
+                    {savingMember ? 'Adding...' : 'Add member'}
+                  </button>
+                </form>
+              </>
+            )}
           </div>
         </div>
       )}

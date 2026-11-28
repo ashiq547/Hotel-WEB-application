@@ -7,10 +7,9 @@ const rbac = require('../utils/rbac');
  * Returns { ok, status, error }.
  */
 async function guardHotelStaff(hotelId, req) {
-  const isGuest = String(req.user.role).toLowerCase() === 'guest';
+  const isGuest = req.user.type === 'Guest';
   if (isGuest) return { ok: false, status: 403, error: 'Staff access required' };
-  const role = req.rbac && req.rbac.role;
-  if (role === 'Admin') return { ok: true };
+  if (await rbac.isHotelOwner(hotelId, req.user.id)) return { ok: true };
   const memberRole = await rbac.isHotelMember(hotelId, req.user.id);
   if (memberRole) return { ok: true, memberRole };
   // Hide membership existence from outsiders.
@@ -84,7 +83,6 @@ exports.createRoom = async (req, res, next) => {
     if (!guard.ok) {
       return res.status(guard.status).json({ error: guard.error });
     }
-
     const [result] = await db.query(
       `INSERT INTO Room (Hotel_ID, Room_Number, Room_Type, Floor_Number, Capacity, Nightly_Rate, Sale_Rate, Room_Description, Availability_Status)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -125,6 +123,12 @@ exports.updateRoom = async (req, res, next) => {
     const guard = await guardHotelStaff(existing[0].Hotel_ID, req);
     if (!guard.ok) {
       return res.status(guard.status).json({ error: guard.error });
+    }
+    if (Hotel_ID && Number(Hotel_ID) !== Number(existing[0].Hotel_ID)) {
+      const targetGuard = await guardHotelStaff(Hotel_ID, req);
+      if (!targetGuard.ok) {
+        return res.status(targetGuard.status).json({ error: targetGuard.error });
+      }
     }
 
     await db.query(

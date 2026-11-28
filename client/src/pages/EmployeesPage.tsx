@@ -100,10 +100,13 @@ export const EmployeesPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const mayChangeRole = user?.role === 'Admin' &&
+        (!editingEmployee || editingEmployee.Employee_ID !== user.id);
+      const payload = mayChangeRole ? formData : { ...formData, Role: undefined };
       if (editingEmployee) {
-        await api.put(`/employees/${editingEmployee.Employee_ID}`, formData);
+        await api.put(`/employees/${editingEmployee.Employee_ID}`, payload);
       } else {
-        await api.post('/employees', formData);
+        await api.post('/employees', payload);
       }
       setModalOpen(false);
       fetchData();
@@ -290,12 +293,19 @@ export const EmployeesPage: React.FC = () => {
                 </label>
                 <select
                   value={formData.Role}
+                  disabled={user?.role !== 'Admin' || (!!editingEmployee && editingEmployee.Employee_ID === user.id)}
                   onChange={(e) => setFormData({ ...formData, Role: e.target.value as UserRole })}
                   className="w-full px-3 py-2 bg-acc-50 dark:bg-acc-800 border border-acc-300 dark:border-acc-700 rounded-xl font-mono font-bold"
                 >
-                  <option value="Admin">Admin (Full Control & System Administration)</option>
+                  {formData.Role === 'Admin' && user?.role !== 'Admin' && (
+                    <option value="Admin">Admin (managed by an administrator)</option>
+                  )}
+                  {formData.Role === 'Manager' && user?.role !== 'Admin' && (
+                    <option value="Manager">Manager (managed by an administrator)</option>
+                  )}
+                  {user?.role === 'Admin' && <option value="Admin">Admin (Full Control & System Administration)</option>}
                   <option value="Receptionist">Receptionist (Bookings, Check-In & Guest Billing)</option>
-                  <option value="Manager">Manager (Reports, Audits & Branch Operations)</option>
+                  {user?.role === 'Admin' && <option value="Manager">Manager (Reports, Audits & Branch Operations)</option>}
                 </select>
               </div>
 
@@ -340,6 +350,9 @@ export const EmployeesPage: React.FC = () => {
                   <input
                     type="password"
                     required={!editingEmployee}
+                    minLength={12}
+                    disabled={!!editingEmployee &&
+                      (user?.role !== 'Admin' || editingEmployee.Employee_ID === user.id)}
                     value={formData.Password}
                     onChange={(e) => setFormData({ ...formData, Password: e.target.value })}
                     placeholder={editingEmployee ? '••••••••' : 'Set Password'}
